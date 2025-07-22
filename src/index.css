@@ -1,0 +1,295 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Cricket Association Design System - All colors MUST be HSL */
+
+@layer base {
+  :root {
+    /* Cricket-themed color palette */
+    --background: 120 60% 97%;
+    --foreground: 120 20% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 120 20% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 120 20% 15%;
+
+    /* Cricket field green primary */
+    --primary: 120 80% 25%;
+    --primary-foreground: 0 0% 98%;
+    --primary-glow: 120 70% 35%;
+
+    /* Cricket whites secondary */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 120 20% 15%;
+
+    --muted: 120 20% 95%;
+    --muted-foreground: 120 15% 45%;
+
+    /* Cricket ball accent */
+    --accent: 25 85% 55%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 120 30% 85%;
+    --input: 120 30% 90%;
+    --ring: 120 80% 25%;
+
+    /* Cricket-specific design tokens */
+    --cricket-field: 120 80% 25%;
+    --cricket-pitch: 45 40% 85%;
+    --cricket-ball: 25 85% 55%;
+    --cricket-whites: 0 0% 98%;
+    
+    /* Beautiful gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-field: linear-gradient(180deg, hsl(120 70% 30%), hsl(120 80% 25%));
+    --gradient-hero: linear-gradient(135deg, hsl(120 80% 25%) 0%, hsl(120 70% 35%) 50%, hsl(25 85% 55%) 100%);
+    
+    /* 3D shadows and effects */
+    --shadow-3d: 0 10px 30px -5px hsl(var(--primary) / 0.3), 0 20px 40px -10px hsl(var(--primary) / 0.2);
+    --shadow-card: 0 4px 20px -2px hsl(120 20% 15% / 0.1), 0 8px 30px -5px hsl(120 20% 15% / 0.05);
+    --shadow-glow: 0 0 40px hsl(var(--accent) / 0.4);
+    
+    /* Smooth transitions */
+    --transition-3d: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* 3D Effects and Animations */
+@layer components {
+  .card-3d {
+    @apply transform-gpu transition-all duration-300 hover:scale-105;
+    box-shadow: var(--shadow-card);
+    transform-style: preserve-3d;
+  }
+
+  .card-3d:hover {
+    box-shadow: var(--shadow-3d);
+    transform: translateY(-10px) rotateX(5deg);
+  }
+
+  .hero-3d {
+    @apply transform-gpu;
+    background: var(--gradient-hero);
+    transform-style: preserve-3d;
+    perspective: 1000px;
+  }
+
+  .cricket-ball-3d {
+    @apply relative overflow-hidden;
+    transform-style: preserve-3d;
+    animation: cricket-ball-float 3s ease-in-out infinite;
+  }
+
+  .service-card {
+    @apply bg-card border border-border rounded-xl p-6 shadow-lg;
+    transition: var(--transition-3d);
+    transform-style: preserve-3d;
+  }
+
+  .service-card:hover {
+    @apply scale-105;
+    box-shadow: var(--shadow-3d);
+    transform: translateY(-8px) rotateY(5deg);
+  }
+
+  .btn-hero {
+    @apply relative overflow-hidden;
+    background: var(--gradient-primary);
+    transition: var(--transition-3d);
+    transform-style: preserve-3d;
+  }
+
+  .btn-hero:hover {
+    @apply scale-105;
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-2px);
+  }
+
+  .btn-hero::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent);
+    transform: translateX(-100%);
+  }
+
+  .btn-hero:hover::before {
+    @apply opacity-100;
+    transform: translateX(100%);
+    transition: transform 0.6s ease;
+  }
+
+  .parallax-bg {
+    background: var(--gradient-field);
+    transform: translateZ(-1px) scale(1.1);
+  }
+
+  .cricket-pitch-lines {
+    background-image: 
+      linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px),
+      linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: pitch-lines-move 20s linear infinite;
+  }
+}
+
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  .rotate-y-6 {
+    transform: rotateY(6deg);
+  }
+
+  .rotate-x-6 {
+    transform: rotateX(6deg);
+  }
+}
+
+/* Custom animations */
+@keyframes cricket-ball-float {
+  0%, 100% { 
+    transform: translateY(0) rotate(0deg); 
+  }
+  50% { 
+    transform: translateY(-20px) rotate(180deg); 
+  }
+}
+
+@keyframes pitch-lines-move {
+  0% { 
+    background-position: 0 0; 
+  }
+  100% { 
+    background-position: 50px 50px; 
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.6s ease-out forwards;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.8s ease-out forwards;
+}
