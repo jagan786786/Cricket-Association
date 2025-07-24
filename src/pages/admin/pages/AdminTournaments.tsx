@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { PencilLine, Trash2, CheckCircle2, Ban } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 const tabs = [
   { id: "all", label: "All Tournaments" },
@@ -7,9 +8,11 @@ const tabs = [
   { id: "add", label: "Add Tournaments" },
 ];
 
-const API_BASE = "http://localhost:4000/api"; 
+const API_BASE = "http://localhost:4000/api";
 
 const AdminTournaments = () => {
+  const location = useLocation();
+  const menuItemId = location.state?.menuItemId;
   const [activeTab, setActiveTab] = useState("all");
 
   const [categories, setCategories] = useState([]);
@@ -18,7 +21,6 @@ const AdminTournaments = () => {
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState("");
   const [editServiceId, setEditServiceId] = useState(null);
-
 
   const [moduleData, setModuleData] = useState({
     name: "",
@@ -34,10 +36,19 @@ const AdminTournaments = () => {
   const [services, setServices] = useState([]);
   const [editServiceIndex, setEditServiceIndex] = useState(null);
 
+  useEffect(() => {
+    if (menuItemId) {
+      fetchCategories();
+    } else {
+      console.warn("No menuItemId found in location.state");
+    }
+  }, [menuItemId]);
+
   // Fetch categories from backend
   const fetchCategories = async () => {
     try {
-      const res = await fetch(`${API_BASE}/categories`);
+      if (!menuItemId) return;
+      const res = await fetch(`${API_BASE}/categories/menuItem/${menuItemId}`);
       const data = await res.json();
       setCategories(data.categories);
     } catch (err) {
@@ -58,19 +69,28 @@ const AdminTournaments = () => {
       return;
     }
 
+    if (!menuItemId) {
+      setError("Menu item ID is missing.");
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE}/category`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCategory }),
+        body: JSON.stringify({
+          name: newCategory,
+          menuItemId, // ✅ Send this
+        }),
       });
-      const data = await res.json();
 
+      const data = await res.json();
       if (!res.ok) throw new Error(data.message);
+
       setNewCategory("");
-      await fetchCategories();
+      fetchCategories(); // Refresh list
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to create category");
     }
   };
 
@@ -123,12 +143,22 @@ const AdminTournaments = () => {
 
   const toggleActive = async (index) => {
     const category = categories[index];
+
+    // Count how many are active
+    const activeCount = categories.filter((cat) => cat.active).length;
+
+    // Prevent activating more than 4
+    if (!category.active && activeCount >= 4) {
+      setError(
+        "Only 4 active categories allowed. Please deactivate one first."
+      );
+      return;
+    }
+
     try {
       const res = await fetch(
         `${API_BASE}/category/${category._id}/toggle-active`,
-        {
-          method: "PATCH",
-        }
+        { method: "PATCH" }
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
@@ -137,7 +167,7 @@ const AdminTournaments = () => {
       setError(err.message);
     }
   };
- // 🟩 Fetch all services/modules
+  // 🟩 Fetch all services/modules
   const fetchModules = async () => {
     try {
       const res = await fetch(`${API_BASE}/modules`);
@@ -219,7 +249,8 @@ const AdminTournaments = () => {
   // 🟩 Delete a module
   const handleDeleteService = async (index) => {
     const module = services[index];
-    if (!window.confirm("Are you sure you want to delete this service?")) return;
+    if (!window.confirm("Are you sure you want to delete this service?"))
+      return;
     try {
       const res = await fetch(`${API_BASE}/module/${module._id}`, {
         method: "DELETE",
@@ -331,7 +362,7 @@ const AdminTournaments = () => {
         {activeTab === "add" && (
           <div>
             <h2 className="text-2xl font-semibold text-green-800 mb-4">
-              Add Tournaments   
+              Add Tournaments
             </h2>
             <div className="space-y-4">
               <div>
@@ -519,7 +550,9 @@ const AdminTournaments = () => {
               <tbody>
                 {services.map((srv, index) => (
                   <tr key={index} className="border-b">
-                    <td className="p-3 border">{srv.category?.name || "N/A"}</td>
+                    <td className="p-3 border">
+                      {srv.category?.name || "N/A"}
+                    </td>
                     <td className="p-3 border">{srv.name}</td>
                     <td className="p-3 border"> ₹{srv.price}</td>
                     <td className="p-3 border">{srv.duration}</td>

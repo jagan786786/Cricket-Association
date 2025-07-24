@@ -1,21 +1,61 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
-import { Menu, X, Target, Users, Trophy, Phone, Info, CreditCard, Camera } from "lucide-react";
+import { Menu, X, Target, Phone, Info, CreditCard, Camera } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+// Helper to get icon component from string
+function getLucideIcon(name: string) {
+  return LucideIcons[name] || LucideIcons.Circle;
+}
+
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dynamicItems, setDynamicItems] = useState<
+    { id?: string; name: string; path: string; icon: React.ElementType }[]
+  >([]);
+
+  const staticNavItemsStart = [
+    { id: "home", name: "Home", path: "/", icon: Target }
+  ];
+
+  const staticNavItemsEnd = [
+    { id: "about", name: "About", path: "/about", icon: Info },
+    { id: "contact", name: "Contact", path: "/contact", icon: Phone },
+    { id: "gallery", name: "Gallery", path: "/gallery", icon: Camera },
+  ];
+
+  useEffect(() => {
+    async function fetchMenuItems() {
+      try {
+        const res = await fetch("http://localhost:4000/api/menuitems");
+        const data = await res.json();
+
+        const mapped = data.menuItems.map(
+          (item: { _id: string; name: string; icon: string }) => ({
+            id: item._id,
+            name: item.name,
+            path: `/${item.name.toLowerCase().replace(/\s+/g, "-")}`,
+            icon: getLucideIcon(item.icon),
+          })
+        );
+
+        console.log("Fetched menu items:", mapped);
+
+        setDynamicItems(mapped);
+      } catch (error) {
+        console.error("Error fetching menu items:", error);
+      }
+    }
+
+    fetchMenuItems();
+  }, []);
 
   const navItems = [
-    { name: "Home", path: "/", icon: Target },
-    { name: "Services", path: "/services", icon: Users },
-    // { name: "Membership", path: "/membership", icon: CreditCard },
-    { name: "Tournaments", path: "/tournaments", icon: Trophy },
-    { name: "About", path: "/about", icon: Info },
-    { name: "Contact", path: "/contact", icon: Phone },
-    { name: "Gallery", path: "/gallery", icon: Camera },
-
+    ...staticNavItemsStart,
+    ...dynamicItems,
+    ...staticNavItemsEnd,
   ];
 
   return (
@@ -28,8 +68,12 @@ const Navigation = () => {
               <Target className="w-6 h-6 text-accent-foreground" />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-xl font-bold text-primary">Cricket Association</h1>
-              <p className="text-sm text-muted-foreground">Excellence in Cricket</p>
+              <h1 className="text-xl font-bold text-primary">
+                Cricket Association
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Excellence in Cricket
+              </p>
             </div>
           </NavLink>
 
@@ -39,6 +83,15 @@ const Navigation = () => {
               <NavLink
                 key={item.name}
                 to={item.path}
+                state={{ menuItemId: item.id }}
+                onClick={() => {
+                  console.log("Clicked menu item:", {
+                    id: item.id,
+                    name: item.name,
+                    path: item.path,
+                  });
+                  setIsOpen(false);
+                }}
                 className={({ isActive }) =>
                   cn(
                     "flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105",
@@ -56,9 +109,7 @@ const Navigation = () => {
 
           {/* CTA Button */}
           <div className="hidden md:block">
-            <Button className="btn-hero">
-              Join Now
-            </Button>
+            <Button className="btn-hero">Join Now</Button>
           </div>
 
           {/* Mobile menu button */}
@@ -69,7 +120,11 @@ const Navigation = () => {
               onClick={() => setIsOpen(!isOpen)}
               className="p-2"
             >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </Button>
           </div>
         </div>
@@ -96,9 +151,7 @@ const Navigation = () => {
               </NavLink>
             ))}
             <div className="pt-4 border-t border-border">
-              <Button className="btn-hero w-full">
-                Join Now
-              </Button>
+              <Button className="btn-hero w-full">Join Now</Button>
             </div>
           </div>
         )}

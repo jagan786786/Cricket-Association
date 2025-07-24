@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { PencilLine, Trash2, CheckCircle2, Ban } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 const tabs = [
   { id: "all", label: "All Services" },
@@ -7,18 +8,19 @@ const tabs = [
   { id: "add", label: "Add Services" },
 ];
 
-const API_BASE = "http://localhost:4000/api"; 
+const API_BASE = "http://localhost:4000/api";
 
 const AdminServices = () => {
-  const [activeTab, setActiveTab] = useState("all");
+  const location = useLocation();
+  const menuItemId = location.state?.menuItemId;
 
+  const [activeTab, setActiveTab] = useState("all");
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState("");
   const [editIndex, setEditIndex] = useState(null);
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState("");
   const [editServiceId, setEditServiceId] = useState(null);
-
 
   const [moduleData, setModuleData] = useState({
     name: "",
@@ -30,24 +32,27 @@ const AdminServices = () => {
     category: "",
   });
   const [featureInput, setFeatureInput] = useState("");
-
   const [services, setServices] = useState([]);
   const [editServiceIndex, setEditServiceIndex] = useState(null);
 
-  // Fetch categories from backend
+  useEffect(() => {
+    if (menuItemId) {
+      fetchCategories();
+    } else {
+      console.warn("No menuItemId found in location.state");
+    }
+  }, [menuItemId]);
+
   const fetchCategories = async () => {
     try {
-      const res = await fetch(`${API_BASE}/categories`);
+      if (!menuItemId) return;
+      const res = await fetch(`${API_BASE}/categories/menuItem/${menuItemId}`);
       const data = await res.json();
       setCategories(data.categories);
     } catch (err) {
       setError("Failed to load categories");
     }
   };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
 
   const handleAddCategory = async (e) => {
     e.preventDefault();
@@ -58,19 +63,28 @@ const AdminServices = () => {
       return;
     }
 
+    if (!menuItemId) {
+      setError("Menu item ID is missing.");
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE}/category`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCategory }),
+        body: JSON.stringify({
+          name: newCategory,
+          menuItemId, // ✅ Send this
+        }),
       });
-      const data = await res.json();
 
+      const data = await res.json();
       if (!res.ok) throw new Error(data.message);
+
       setNewCategory("");
-      await fetchCategories();
+      fetchCategories(); // Refresh list
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to create category");
     }
   };
 
@@ -123,12 +137,22 @@ const AdminServices = () => {
 
   const toggleActive = async (index) => {
     const category = categories[index];
+
+    // Count how many are active
+    const activeCount = categories.filter((cat) => cat.active).length;
+
+    // Prevent activating more than 4
+    if (!category.active && activeCount >= 4) {
+      setError(
+        "Only 4 active categories allowed. Please deactivate one first."
+      );
+      return;
+    }
+
     try {
       const res = await fetch(
         `${API_BASE}/category/${category._id}/toggle-active`,
-        {
-          method: "PATCH",
-        }
+        { method: "PATCH" }
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
@@ -137,7 +161,7 @@ const AdminServices = () => {
       setError(err.message);
     }
   };
- // 🟩 Fetch all services/modules
+
   const fetchModules = async () => {
     try {
       const res = await fetch(`${API_BASE}/modules`);
@@ -151,18 +175,15 @@ const AdminServices = () => {
   useEffect(() => {
     fetchCategories();
     fetchModules();
-  }, []);
+  }, [menuItemId]);
 
-  // 🟩 Handle Add or Update Module
   const handleAddService = async () => {
     if (moduleData.skills.length < 3) {
       alert("Please add at least 3 features.");
       return;
     }
 
-    const payload = {
-      ...moduleData,
-    };
+    const payload = { ...moduleData };
 
     const url = editServiceId
       ? `${API_BASE}/module/${editServiceId}`
@@ -200,7 +221,6 @@ const AdminServices = () => {
     setFeatureInput("");
   };
 
-  // 🟩 Edit existing service (load into form)
   const handleEditService = (index) => {
     const module = services[index];
     setModuleData({
@@ -216,10 +236,10 @@ const AdminServices = () => {
     setActiveTab("add");
   };
 
-  // 🟩 Delete a module
   const handleDeleteService = async (index) => {
     const module = services[index];
-    if (!window.confirm("Are you sure you want to delete this service?")) return;
+    if (!window.confirm("Are you sure you want to delete this service?"))
+      return;
     try {
       const res = await fetch(`${API_BASE}/module/${module._id}`, {
         method: "DELETE",
@@ -238,7 +258,6 @@ const AdminServices = () => {
         Services Management
       </h1>
 
-      {/* Tabs */}
       <div className="grid grid-cols-3 max-w-4xl mx-auto gap-4 mb-10">
         {tabs.map((tab) => (
           <button
@@ -255,9 +274,7 @@ const AdminServices = () => {
         ))}
       </div>
 
-      {/* Tab Content */}
       <div className="max-w-6xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
-        {/* Category Tab */}
         {activeTab === "category" && (
           <div>
             <h2 className="text-2xl font-semibold text-green-800 mb-4">
@@ -312,7 +329,23 @@ const AdminServices = () => {
                     </button>
                     <button
                       onClick={() => toggleActive(index)}
-                      title={cat.active ? "Deactivate" : "Activate"}
+                      title={
+                        cat.active
+                          ? "Deactivate"
+                          : categories.filter((c) => c.active).length >= 4
+                          ? "Limit reached: Max 4 active categories"
+                          : "Activate"
+                      }
+                      disabled={
+                        !cat.active &&
+                        categories.filter((c) => c.active).length >= 4
+                      }
+                      className={`${
+                        !cat.active &&
+                        categories.filter((c) => c.active).length >= 4
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
                     >
                       {cat.active ? (
                         <Ban className="text-yellow-600 w-5 h-5" />
@@ -344,7 +377,7 @@ const AdminServices = () => {
                   className="w-full h-10 border rounded px-2"
                 >
                   <option value="">Select Category</option>
-                  {categories.map((cat, idx) => (
+                  {categories.map((cat) => (
                     <option key={cat._id} value={cat._id}>
                       {cat.name} {cat.active ? "" : "(Inactive)"}
                     </option>
@@ -519,7 +552,9 @@ const AdminServices = () => {
               <tbody>
                 {services.map((srv, index) => (
                   <tr key={index} className="border-b">
-                    <td className="p-3 border">{srv.category?.name || "N/A"}</td>
+                    <td className="p-3 border">
+                      {srv.category?.name || "N/A"}
+                    </td>
                     <td className="p-3 border">{srv.name}</td>
                     <td className="p-3 border"> ₹{srv.price}</td>
                     <td className="p-3 border">{srv.duration}</td>

@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useLocation } from "react-router-dom";
+import * as LucideIcons from "lucide-react";
+
 import { CheckCircle, Star, Award, Shield, Clock, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 
@@ -24,47 +28,62 @@ const iconMap = {
 };
 
 const Services = () => {
+  const location = useLocation();
+  const menuItemId = location.state?.menuItemId || null;
+
   const [categories, setCategories] = useState([]);
   const [modulesByCategory, setModulesByCategory] = useState({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(null);
 
   useEffect(() => {
-    const fetchCategoriesAndModules = async () => {
+    const fetchServicesData = async () => {
       try {
-        const { data } = await axios.get(
-          "http://localhost:4000/api/categories"
-        );
-        const activeCategories = data.categories.filter((cat) => cat.active);
-        setCategories(activeCategories);
-        setActiveTab(activeCategories[0]?._id || null);
+        if (!menuItemId) {
+          setLoading(false);
+          return;
+        }
 
-        const modulePromises = activeCategories.map((cat) =>
+        // 1. Fetch active categories related to this menu item
+        const { data: categoryRes } = await axios.get(
+          `http://localhost:4000/api/categories/menuitem/${menuItemId}`
+        );
+
+        const activeCategories = categoryRes.categories || [];
+
+        // Limit to 4 as per business rule (backend also enforces this)
+        const limitedCategories = activeCategories.slice(0, 4);
+        setCategories(limitedCategories);
+        setActiveTab(limitedCategories[0]?._id || null);
+
+        // 2. Fetch modules for each category
+        const modulePromises = limitedCategories.map((cat) =>
           axios.get(`http://localhost:4000/api/modules/category/${cat._id}`)
         );
 
         const moduleResponses = await Promise.all(modulePromises);
         const modulesData = {};
 
-        moduleResponses.forEach((response, index) => {
-          const categoryId = activeCategories[index]._id;
-          modulesData[categoryId] = response.data.modules;
+        moduleResponses.forEach((res, idx) => {
+          const categoryId = limitedCategories[idx]._id;
+          modulesData[categoryId] = res.data.modules;
         });
 
         setModulesByCategory(modulesData);
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching services:", err);
+        console.error("Error loading services:", err);
         setLoading(false);
       }
     };
 
-    fetchCategoriesAndModules();
-  }, []);
+    fetchServicesData();
+  }, [menuItemId]);
 
-  if (loading) {
-    return <div className="p-10 text-center">Loading services...</div>;
-  }
+  function getLucideIconByName(iconName: string): React.ElementType {
+  return LucideIcons[iconName] || LucideIcons.Award; // Fallback icon
+}
+
 
   const getGridCols = () => {
     const count = categories.length;
@@ -72,6 +91,18 @@ const Services = () => {
     if (count === 3) return "grid-cols-3";
     return "grid-cols-4";
   };
+
+  if (loading) {
+    return <div className="p-10 text-center">Loading services...</div>;
+  }
+
+  if (!menuItemId || categories.length === 0) {
+    return (
+      <div className="p-10 text-center">
+        No active categories available for this service.
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
@@ -104,7 +135,8 @@ const Services = () => {
               className={`grid w-full mb-12 bg-muted/50 p-2 rounded-2xl ${getGridCols()}`}
             >
               {categories.map((category) => {
-                const Icon = iconMap[category.icon?.toLowerCase()] || Award;
+                const Icon = getLucideIconByName(category.icon);
+
                 return (
                   <TabsTrigger
                     key={category._id}
@@ -160,7 +192,7 @@ const Services = () => {
                             {service.description}
                           </CardDescription>
                           <div className="text-3xl font-bold text-primary">
-                           ₹{service.price}
+                            ₹{service.price}
                           </div>
                         </CardHeader>
 
