@@ -16,7 +16,7 @@ const AdminServices = () => {
 
   const [activeTab, setActiveTab] = useState("all");
   const [categories, setCategories] = useState([]);
-  const [newCategory, setNewCategory] = useState("");
+  const [newCategory, setNewCategory] = useState({ name: "", icon: "" });
   const [editIndex, setEditIndex] = useState(null);
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState("");
@@ -27,13 +27,14 @@ const AdminServices = () => {
     description: "",
     price: "",
     duration: "Monthly",
-    skills: [],
+    features: [],
     isPopular: false,
     category: "",
   });
+
   const [featureInput, setFeatureInput] = useState("");
+  const [allServices, setAllServices] = useState([]);
   const [services, setServices] = useState([]);
-  const [editServiceIndex, setEditServiceIndex] = useState(null);
 
   useEffect(() => {
     if (menuItemId) {
@@ -54,11 +55,42 @@ const AdminServices = () => {
     }
   };
 
+  const fetchModules = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/modules`);
+      const data = await res.json();
+      setAllServices(data.modules || []);
+
+      if (categories.length > 0) {
+        const categoryIds = categories.map((cat) => cat._id);
+        const filtered = data.modules.filter((mod) =>
+          categoryIds.includes(mod.category?._id)
+        );
+        setServices(filtered);
+      } else {
+        setServices([]);
+      }
+    } catch (err) {
+      console.error("Error fetching modules:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (menuItemId) {
+      fetchCategories();
+    }
+    fetchModules();
+  }, [menuItemId]);
+
+  useEffect(() => {
+    fetchModules();
+  }, [categories]);
+
   const handleAddCategory = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!newCategory.trim()) {
+    if (!newCategory.name.trim()) {
       setError("Category name cannot be empty.");
       return;
     }
@@ -73,23 +105,27 @@ const AdminServices = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: newCategory,
-          menuItemId, // ✅ Send this
+          name: newCategory.name,
+          icon: newCategory.icon,
+          menuItemId,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
 
-      setNewCategory("");
-      fetchCategories(); // Refresh list
+      setNewCategory({ name: "", icon: "" });
+      fetchCategories();
     } catch (err) {
       setError(err.message || "Failed to create category");
     }
   };
 
   const handleEdit = (index) => {
-    setNewCategory(categories[index].name);
+    setNewCategory({
+      name: categories[index].name,
+      icon: categories[index].icon || "",
+    });
     setEditIndex(index);
     setEditId(categories[index]._id);
   };
@@ -97,7 +133,7 @@ const AdminServices = () => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     setError("");
-    if (!newCategory.trim()) {
+    if (!newCategory.name.trim()) {
       setError("Category name cannot be empty.");
       return;
     }
@@ -106,7 +142,10 @@ const AdminServices = () => {
       const res = await fetch(`${API_BASE}/category/${editId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCategory }),
+        body: JSON.stringify({
+          name: newCategory.name,
+          icon: newCategory.icon,
+        }),
       });
       const data = await res.json();
 
@@ -114,8 +153,8 @@ const AdminServices = () => {
 
       setEditIndex(null);
       setEditId(null);
-      setNewCategory("");
-      await fetchCategories();
+      setNewCategory({ name: "", icon: "" });
+      fetchCategories();
     } catch (err) {
       setError(err.message);
     }
@@ -129,7 +168,7 @@ const AdminServices = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      await fetchCategories();
+      fetchCategories();
     } catch (err) {
       setError(err.message);
     }
@@ -138,10 +177,8 @@ const AdminServices = () => {
   const toggleActive = async (index) => {
     const category = categories[index];
 
-    // Count how many are active
     const activeCount = categories.filter((cat) => cat.active).length;
 
-    // Prevent activating more than 4
     if (!category.active && activeCount >= 4) {
       setError(
         "Only 4 active categories allowed. Please deactivate one first."
@@ -156,34 +193,35 @@ const AdminServices = () => {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      await fetchCategories();
+      fetchCategories();
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const fetchModules = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/modules`);
-      const data = await res.json();
-      setServices(data.modules);
-    } catch (err) {
-      console.error("Error fetching modules:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchCategories();
-    fetchModules();
-  }, [menuItemId]);
-
   const handleAddService = async () => {
-    if (moduleData.skills.length < 3) {
+    if (moduleData.features.length < 3) {
       alert("Please add at least 3 features.");
       return;
     }
 
-    const payload = { ...moduleData };
+    if (!menuItemId) {
+      alert("Menu item ID is missing.");
+      return;
+    }
+
+    if (!moduleData.category) {
+      alert("Please select a category.");
+      return;
+    }
+
+    const payload = {
+      ...moduleData,
+      menuItem: menuItemId,
+    };
+
+    console.log("Sending payload:", payload);
+
 
     const url = editServiceId
       ? `${API_BASE}/module/${editServiceId}`
@@ -200,7 +238,7 @@ const AdminServices = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Operation failed");
 
-      await fetchModules();
+      fetchModules();
       resetModuleForm();
     } catch (err) {
       alert(err.message);
@@ -213,7 +251,7 @@ const AdminServices = () => {
       description: "",
       price: "",
       duration: "Monthly",
-      skills: [],
+      features: [],
       isPopular: false,
       category: "",
     });
@@ -228,9 +266,9 @@ const AdminServices = () => {
       description: module.description,
       price: module.price,
       duration: module.duration,
-      skills: module.skills,
+      features: module.features,
       isPopular: module.isPopular,
-      category: module.category._id,
+      category: module.category?._id || "",
     });
     setEditServiceId(module._id);
     setActiveTab("add");
@@ -246,7 +284,7 @@ const AdminServices = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      await fetchModules();
+      fetchModules();
     } catch (err) {
       alert("Failed to delete: " + err.message);
     }
@@ -258,6 +296,7 @@ const AdminServices = () => {
         Services Management
       </h1>
 
+      {/* Tabs */}
       <div className="grid grid-cols-3 max-w-4xl mx-auto gap-4 mb-10">
         {tabs.map((tab) => (
           <button
@@ -283,13 +322,24 @@ const AdminServices = () => {
             {error && <p className="text-red-500 mb-3">{error}</p>}
             <form
               onSubmit={editIndex !== null ? handleUpdate : handleAddCategory}
-              className="flex gap-4 mb-6"
+              className="flex flex-col md:flex-row gap-4 mb-6"
             >
               <input
                 type="text"
                 placeholder="Enter category name"
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
+                value={newCategory.name}
+                onChange={(e) =>
+                  setNewCategory({ ...newCategory, name: e.target.value })
+                }
+                className="flex-1 border border-gray-300 rounded px-4 py-2"
+              />
+              <input
+                type="text"
+                placeholder="Icon (e.g., fas fa-star)"
+                value={newCategory.icon}
+                onChange={(e) =>
+                  setNewCategory({ ...newCategory, icon: e.target.value })
+                }
                 className="flex-1 border border-gray-300 rounded px-4 py-2"
               />
               <button
@@ -435,6 +485,8 @@ const AdminServices = () => {
                   >
                     <option value="Monthly">Monthly</option>
                     <option value="Yearly">Yearly</option>
+                    <option value="Day">Day</option>
+                    <option value="hour">hour</option>
                   </select>
                 </div>
               </div>
@@ -446,7 +498,7 @@ const AdminServices = () => {
                     value={featureInput}
                     onChange={(e) => setFeatureInput(e.target.value)}
                     placeholder="Enter a feature"
-                    disabled={moduleData.skills.length >= 5}
+                    disabled={moduleData.features.length >= 5}
                     className="w-full border rounded px-4 py-2"
                   />
                   <button
@@ -456,25 +508,25 @@ const AdminServices = () => {
                       const value = featureInput.trim();
                       if (
                         value &&
-                        moduleData.skills.length < 5 &&
-                        !moduleData.skills.includes(value)
+                        moduleData.features.length < 5 &&
+                        !moduleData.features.includes(value)
                       ) {
                         setModuleData({
                           ...moduleData,
-                          skills: [...moduleData.skills, value],
+                          features: [...moduleData.features, value],
                         });
                         setFeatureInput("");
                       }
                     }}
                     disabled={
-                      !featureInput.trim() || moduleData.skills.length >= 5
+                      !featureInput.trim() || moduleData.features.length >= 5
                     }
                   >
                     Add
                   </button>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {moduleData.skills.map((skill, index) => (
+                  {moduleData.features.map((skill, index) => (
                     <span
                       key={index}
                       className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm flex items-center gap-1"
@@ -483,10 +535,10 @@ const AdminServices = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          const updated = moduleData.skills.filter(
+                          const updated = moduleData.features.filter(
                             (_, i) => i !== index
                           );
-                          setModuleData({ ...moduleData, skills: updated });
+                          setModuleData({ ...moduleData, features: updated });
                         }}
                         className="text-red-500 hover:text-red-700"
                       >
@@ -495,12 +547,12 @@ const AdminServices = () => {
                     </span>
                   ))}
                 </div>
-                {moduleData.skills.length < 3 && (
+                {moduleData.features.length < 3 && (
                   <p className="text-sm text-red-500 mt-1">
                     Add at least 3 features
                   </p>
                 )}
-                {moduleData.skills.length === 5 && (
+                {moduleData.features.length === 5 && (
                   <p className="text-sm text-green-600 mt-1">
                     Maximum of 5 features added
                   </p>
@@ -525,7 +577,7 @@ const AdminServices = () => {
                 onClick={handleAddService}
                 className="bg-green-700 text-white w-full py-2 rounded"
               >
-                {editServiceIndex !== null ? "Update Service" : "Save"}
+                {editServiceId !== null ? "Update Service" : "Save"}
               </button>
             </div>
           </div>
@@ -559,8 +611,8 @@ const AdminServices = () => {
                     <td className="p-3 border"> ₹{srv.price}</td>
                     <td className="p-3 border">{srv.duration}</td>
                     <td className="p-3 border">
-                      {srv.skills.slice(0, 3).join(", ")}
-                      {srv.skills.length > 3 && "..."}
+                      {srv.features.slice(0, 3).join(", ")}
+                      {srv.features.length > 3 && "..."}
                     </td>
                     <td className="p-3 border">
                       {srv.isPopular ? "Yes" : "No"}
