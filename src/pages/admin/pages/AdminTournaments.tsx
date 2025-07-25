@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PencilLine, Trash2, CheckCircle2, Ban } from "lucide-react";
+import { PencilLine, CheckCircle2, Ban } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 const tabs = [
@@ -13,7 +13,6 @@ const API_BASE = "http://localhost:4000/api";
 const AdminTournaments = () => {
   const location = useLocation();
   const menuItemId = location.state?.menuItemId;
-  const menuItemName = location.state?.menuItemName;
 
   const [activeTab, setActiveTab] = useState("all");
   const [categories, setCategories] = useState([]);
@@ -32,6 +31,7 @@ const AdminTournaments = () => {
     entryFee: "",
     prizePool: "",
     category: "",
+    mapurl: "",
   });
   const [editTournamentId, setEditTournamentId] = useState(null);
 
@@ -91,20 +91,20 @@ const AdminTournaments = () => {
     }
   };
 
-  const handleDeleteCategory = async (id) => {
-    try {
-      const res = await fetch(`${API_BASE}/category/${id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      fetchCategories();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+  const toggleCategoryActive = async (id, name, active) => {
+    const action = active ? "deactivate" : "activate";
+    const activeCount = categories.filter((c) => c.active).length;
 
-  const toggleCategoryActive = async (id) => {
+    if (!active && activeCount >= 4) {
+      alert("Only 4 active categories allowed. Please deactivate one first.");
+      return;
+    }
+
+    if (
+      !window.confirm(`Are you sure you want to ${action} this category?`)
+    )
+      return;
+
     try {
       const res = await fetch(`${API_BASE}/category/${id}/toggle-active`, {
         method: "PATCH",
@@ -148,9 +148,11 @@ const AdminTournaments = () => {
         entryFee: "",
         prizePool: "",
         category: "",
+        mapurl: "",
       });
       setEditTournamentId(null);
       fetchTournaments();
+      setActiveTab("all");
     } catch (err) {
       alert(err.message);
     }
@@ -167,16 +169,25 @@ const AdminTournaments = () => {
       entryFee: tournament.entryFee || "",
       prizePool: tournament.prizePool || "",
       category: tournament.category?._id || "",
+      mapurl: tournament.mapurl || "",
     };
     setTournamentForm(cleaned);
     setEditTournamentId(tournament._id);
     setActiveTab("add");
   };
 
-  const handleDeleteTournament = async (id) => {
+  const toggleTournamentActive = async (id, name, active) => {
+    const action = active ? "deactivate" : "activate";
+    if (
+      !window.confirm(
+        `Are you sure you want to ${action} this tournament?`
+      )
+    )
+      return;
+
     try {
-      const res = await fetch(`${API_BASE}/tournaments/${id}`, {
-        method: "DELETE",
+      const res = await fetch(`${API_BASE}/tournament/${id}/toggle-active`, {
+        method: "PATCH",
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
@@ -221,15 +232,16 @@ const AdminTournaments = () => {
                 placeholder="Enter category name"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
-                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 shadow-sm focus:ring-green-500 focus:border-green-500"
+                className="flex-1 border border-gray-300 rounded-lg px-4 py-2"
               />
               <button
                 type="submit"
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg shadow-md"
+                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
               >
                 {editIndex !== null ? "Update" : "Add"}
               </button>
             </form>
+
             <ul className="space-y-4">
               {categories.map((cat, index) => (
                 <li
@@ -257,13 +269,16 @@ const AdminTournaments = () => {
                         setEditIndex(index);
                         setEditId(cat._id);
                       }}
+                      title="Edit"
                     >
                       <PencilLine className="text-blue-600 w-5 h-5" />
                     </button>
-                    <button onClick={() => handleDeleteCategory(cat._id)}>
-                      <Trash2 className="text-red-600 w-5 h-5" />
-                    </button>
-                    <button onClick={() => toggleCategoryActive(cat._id)}>
+                    <button
+                      onClick={() =>
+                        toggleCategoryActive(cat._id, cat.name, cat.active)
+                      }
+                      title={cat.active ? "Deactivate" : "Activate"}
+                    >
                       {cat.active ? (
                         <Ban className="text-yellow-600 w-5 h-5" />
                       ) : (
@@ -284,7 +299,6 @@ const AdminTournaments = () => {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Category Dropdown */}
               <div className="flex flex-col">
                 <label className="mb-1 font-medium text-green-700">
                   Category
@@ -297,7 +311,7 @@ const AdminTournaments = () => {
                       category: e.target.value,
                     })
                   }
-                  className="border border-gray-300 rounded-lg px-4 py-2 shadow-sm focus:ring-green-500 focus:border-green-500"
+                  className="border border-gray-300 rounded-lg px-4 py-2"
                 >
                   <option value="">Select Category</option>
                   {categories.map((cat) => (
@@ -308,13 +322,18 @@ const AdminTournaments = () => {
                 </select>
               </div>
 
-              {/* Other Fields */}
               {Object.entries(tournamentForm).map(([key, value]) => {
                 if (key === "category") return null;
+                const label = key === "mapurl" ? "Map URL (Google Maps)" : key;
+                const placeholder =
+                  key === "mapurl"
+                    ? "https://www.google.com/maps/..."
+                    : `Enter ${key}`;
+
                 return (
                   <div key={key} className="flex flex-col">
                     <label className="mb-1 capitalize font-medium text-green-700">
-                      {key}
+                      {label}
                     </label>
                     <input
                       type={key === "date" ? "date" : "text"}
@@ -325,8 +344,8 @@ const AdminTournaments = () => {
                           [key]: e.target.value,
                         })
                       }
-                      placeholder={`Enter ${key}`}
-                      className="border border-gray-300 rounded-lg px-4 py-2 shadow-sm focus:ring-green-500 focus:border-green-500"
+                      placeholder={placeholder}
+                      className="border border-gray-300 rounded-lg px-4 py-2"
                     />
                   </div>
                 );
@@ -335,7 +354,7 @@ const AdminTournaments = () => {
 
             <button
               onClick={handleTournamentSubmit}
-              className="mt-8 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl shadow-md transition-all duration-200"
+              className="mt-8 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700"
             >
               {editTournamentId ? "Update Tournament" : "Add Tournament"}
             </button>
@@ -345,39 +364,69 @@ const AdminTournaments = () => {
         {activeTab === "all" && (
           <div>
             <h2 className="text-2xl font-semibold text-green-800 mb-4">
-              All Tournaments ({menuItemName})
+              All Tournaments
             </h2>
             <table className="w-full table-auto border">
               <thead>
                 <tr className="bg-green-100 text-left">
                   <th className="p-2 border">Category</th>
-                  <th className="p-2 border">Name</th>
-                  <th className="p-2 border">Date</th>
+                  <th className="p-2 border">Tournament Name</th>
+                  <th className="p-2 border">Tournament Date</th>
                   <th className="p-2 border">Location</th>
                   <th className="p-2 border">Entry Fee</th>
-                  <th className="p-2 border">Actions</th>
+                  <th className="p-2 border text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {tournaments.map((tour) => (
-                  <tr key={tour._id} className="border-b">
+                  <tr key={tour._id} className="border-b hover:bg-green-50">
                     <td className="p-2 border">{tour.category?.name}</td>
                     <td className="p-2 border">{tour.name}</td>
                     <td className="p-2 border">{tour.date?.slice(0, 10)}</td>
-                    <td className="p-2 border">{tour.location}</td>
+                    <td className="p-2 border">
+                      <a
+                        href={tour.mapurl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        {tour.location}
+                      </a>
+                    </td>
                     <td className="p-2 border">₹{tour.entryFee}</td>
-                    <td className="p-2 border flex gap-2">
-                      <button onClick={() => handleEditTournament(tour)}>
+                    <td className="p-2 border text-center flex justify-center gap-4">
+                      <button
+                        onClick={() => handleEditTournament(tour)}
+                        title="Edit"
+                      >
                         <PencilLine className="w-4 text-blue-600" />
                       </button>
-                      <button onClick={() => handleDeleteTournament(tour._id)}>
-                        <Trash2 className="w-4 text-red-600" />
+                      <button
+                        onClick={() =>
+                          toggleTournamentActive(
+                            tour._id,
+                            tour.name,
+                            tour.active
+                          )
+                        }
+                        title={tour.active ? "Deactivate" : "Activate"}
+                      >
+                        {tour.active ? (
+                          <Ban className="w-4 text-yellow-600" />
+                        ) : (
+                          <CheckCircle2 className="w-4 text-green-600" />
+                        )}
                       </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            {tournaments.length === 0 && (
+              <p className="text-center text-gray-500 mt-4">
+                No tournaments available.
+              </p>
+            )}
           </div>
         )}
       </div>

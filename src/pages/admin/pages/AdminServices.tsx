@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PencilLine, Trash2, CheckCircle2, Ban } from "lucide-react";
+import { PencilLine, Trash2, CheckCircle2, Ban, Info } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 const tabs = [
@@ -21,6 +21,7 @@ const AdminServices = () => {
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState("");
   const [editServiceId, setEditServiceId] = useState(null);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   const [moduleData, setModuleData] = useState({
     name: "",
@@ -39,8 +40,6 @@ const AdminServices = () => {
   useEffect(() => {
     if (menuItemId) {
       fetchCategories();
-    } else {
-      console.warn("No menuItemId found in location.state");
     }
   }, [menuItemId]);
 
@@ -160,22 +159,12 @@ const AdminServices = () => {
     }
   };
 
-  const handleDelete = async (index) => {
-    const category = categories[index];
-    try {
-      const res = await fetch(`${API_BASE}/category/${category._id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      fetchCategories();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
   const toggleActive = async (index) => {
     const category = categories[index];
+
+    const action = category.active ? "deactivate" : "activate";
+    if (!window.confirm(`Are you sure you want to ${action} this category?`))
+      return;
 
     const activeCount = categories.filter((cat) => cat.active).length;
 
@@ -220,9 +209,6 @@ const AdminServices = () => {
       menuItem: menuItemId,
     };
 
-    console.log("Sending payload:", payload);
-
-
     const url = editServiceId
       ? `${API_BASE}/module/${editServiceId}`
       : `${API_BASE}/module`;
@@ -240,6 +226,7 @@ const AdminServices = () => {
 
       fetchModules();
       resetModuleForm();
+      setActiveTab("all");
     } catch (err) {
       alert(err.message);
     }
@@ -274,19 +261,24 @@ const AdminServices = () => {
     setActiveTab("add");
   };
 
-  const handleDeleteService = async (index) => {
+  const handleToggleServiceActive = async (index) => {
     const module = services[index];
-    if (!window.confirm("Are you sure you want to delete this service?"))
+    const action = module.active ? "deactivate" : "activate";
+    if (!window.confirm(`Are you sure you want to ${action} this service?`))
       return;
+
     try {
-      const res = await fetch(`${API_BASE}/module/${module._id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `${API_BASE}/module/${module._id}/toggle-active`,
+        {
+          method: "PATCH",
+        }
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       fetchModules();
     } catch (err) {
-      alert("Failed to delete: " + err.message);
+      alert("Error toggling service status: " + err.message);
     }
   };
 
@@ -322,32 +314,88 @@ const AdminServices = () => {
             {error && <p className="text-red-500 mb-3">{error}</p>}
             <form
               onSubmit={editIndex !== null ? handleUpdate : handleAddCategory}
-              className="flex flex-col md:flex-row gap-4 mb-6"
+              className="flex flex-col md:flex-row md:items-end gap-4 mb-6"
             >
-              <input
-                type="text"
-                placeholder="Enter category name"
-                value={newCategory.name}
-                onChange={(e) =>
-                  setNewCategory({ ...newCategory, name: e.target.value })
-                }
-                className="flex-1 border border-gray-300 rounded px-4 py-2"
-              />
-              <input
-                type="text"
-                placeholder="Icon (e.g., fas fa-star)"
-                value={newCategory.icon}
-                onChange={(e) =>
-                  setNewCategory({ ...newCategory, icon: e.target.value })
-                }
-                className="flex-1 border border-gray-300 rounded px-4 py-2"
-              />
-              <button
-                type="submit"
-                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition"
-              >
-                {editIndex !== null ? "Update" : "Add"}
-              </button>
+              {/* Category Name */}
+              <div className="flex-1">
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Category Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter category name"
+                  value={newCategory.name}
+                  onChange={(e) =>
+                    setNewCategory({ ...newCategory, name: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded px-4 py-2"
+                />
+              </div>
+
+              {/* Icon Input with Tooltip */}
+              <div className="flex-1 relative">
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Icon
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Icon name (e.g., star, home)"
+                    value={newCategory.icon}
+                    onChange={(e) =>
+                      setNewCategory({ ...newCategory, icon: e.target.value })
+                    }
+                    className="w-full border border-gray-300 rounded px-4 py-2 pr-10"
+                  />
+                  {/* Info Icon Inside Input */}
+                  <button
+                    type="button"
+                    onClick={() => setShowTooltip(!showTooltip)}
+                    className="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700"
+                  >
+                    <Info className="w-5 h-5" />
+                  </button>
+
+                  {/* Tooltip */}
+                  {showTooltip && (
+                    <div className="absolute z-50 top-14 right-0 w-72 bg-white border border-gray-300 shadow-xl rounded-xl p-4 text-sm text-gray-700 animate-fade-in">
+                      <div className="flex items-start gap-2">
+                        <Info className="w-5 h-5 text-purple-600 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-purple-700 text-base">
+                            Helpful tip
+                          </p>
+                          <p className="text-gray-600 mt-1">
+                            You can visit{" "}
+                            <a
+                              href="https://lucide.dev/icons/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 underline hover:text-blue-800"
+                            >
+                              this link
+                            </a>{" "}
+                            to find the icon name (e.g., <code>star</code>,{" "}
+                            <code>home</code>).
+                          </p>
+                        </div>
+                      </div>
+                      {/* Tooltip arrow */}
+                      <div className="absolute -top-2 right-6 w-3 h-3 bg-white rotate-45 border-l border-t border-gray-300"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex-shrink-1">
+                <button
+                  type="submit"
+                  className="bg-green-600 text-white px-7 py-3 h-15 rounded hover:bg-green-700 transition text-sm"
+                >
+                  {editIndex !== null ? "Update" : "Add"}
+                </button>
+              </div>
             </form>
 
             <ul className="space-y-4">
@@ -374,9 +422,9 @@ const AdminServices = () => {
                     <button onClick={() => handleEdit(index)} title="Edit">
                       <PencilLine className="text-blue-600 w-5 h-5" />
                     </button>
-                    <button onClick={() => handleDelete(index)} title="Delete">
+                    {/* <button onClick={() => handleDelete(index)} title="Delete">
                       <Trash2 className="text-red-600 w-5 h-5" />
-                    </button>
+                    </button> */}
                     <button
                       onClick={() => toggleActive(index)}
                       title={
@@ -589,46 +637,85 @@ const AdminServices = () => {
             <h2 className="text-2xl font-semibold text-green-800 mb-4">
               All Services
             </h2>
-            <table className="w-full table-auto border">
-              <thead>
-                <tr className="bg-green-100 text-left">
-                  <th className="p-2 border">Category</th>
-                  <th className="p-2 border">Name</th>
-                  <th className="p-2 border">Price</th>
-                  <th className="p-2 border">Duration</th>
-                  <th className="p-2 border">Features</th>
-                  <th className="p-2 border">Popular</th>
-                  <th className="p-2 border">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {services.map((srv, index) => (
-                  <tr key={index} className="border-b">
-                    <td className="p-3 border">
-                      {srv.category?.name || "N/A"}
-                    </td>
-                    <td className="p-3 border">{srv.name}</td>
-                    <td className="p-3 border"> ₹{srv.price}</td>
-                    <td className="p-3 border">{srv.duration}</td>
-                    <td className="p-3 border">
-                      {srv.features.slice(0, 3).join(", ")}
-                      {srv.features.length > 3 && "..."}
-                    </td>
-                    <td className="p-3 border">
-                      {srv.isPopular ? "Yes" : "No"}
-                    </td>
-                    <td className="p-3 border flex gap-2">
-                      <button onClick={() => handleEditService(index)}>
-                        <PencilLine className="w-4  text-blue-600" />
-                      </button>
-                      <button onClick={() => handleDeleteService(index)}>
-                        <Trash2 className="w-4 text-red-600" />
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[800px] table-auto border border-gray-300 rounded-lg overflow-hidden">
+                <thead>
+                  <tr className="bg-green-100 text-left text-sm text-green-800">
+                    <th className="p-3 border border-gray-200">Category</th>
+                    {/* <th className="p-3 border border-gray-200">Category Status</th> */}
+                    <th className="p-3 border border-gray-200">Name</th>
+                    <th className="p-3 border border-gray-200">Price</th>
+                    <th className="p-3 border border-gray-200">Duration</th>
+                    <th className="p-3 border border-gray-200">Features</th>
+                    <th className="p-3 border border-gray-200">Popular</th>
+                    <th className="p-3 border border-gray-200 text-center">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {services.map((srv, index) => (
+                    <tr key={index} className="hover:bg-green-50 transition">
+                      <td className="p-3 border border-gray-200">
+                        {srv.category?.name || "N/A"}
+                      </td>
+                      {/* <td className="p-3 border border-gray-200">
+                        {srv.category?.active ? (
+                          <span className="text-green-600">Active</span>
+                        ) : (
+                          <span className="text-red-500">Inactive</span>
+                        )}
+                      </td> */}
+                      <td className="p-3 border border-gray-200">{srv.name}</td>
+                      <td className="p-3 border border-gray-200">
+                        ₹{srv.price}
+                      </td>
+                      <td className="p-3 border border-gray-200">
+                        {srv.duration}
+                      </td>
+                      <td className="p-3 border border-gray-200">
+                        {srv.features.slice(0, 3).join(", ")}
+                        {srv.features.length > 3 && (
+                          <span className="text-gray-400">...</span>
+                        )}
+                      </td>
+                      <td className="p-3 border border-gray-200">
+                        {srv.isPopular ? (
+                          <span className="text-green-600 font-semibold">
+                            Yes
+                          </span>
+                        ) : (
+                          <span className="text-gray-500">No</span>
+                        )}
+                      </td>
+                      <td className="p-3 border border-gray-200 text-center">
+                        <div className="flex justify-center gap-3">
+                          <button
+                            onClick={() => handleEditService(index)}
+                            title="Edit"
+                            className="hover:text-blue-600"
+                          >
+                            <PencilLine className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleServiceActive(index)}
+                            title={
+                              services[index].active ? "Deactivate" : "Activate"
+                            }
+                          >
+                            {services[index].active ? (
+                              <Ban className="text-yellow-600 w-4 h-4" />
+                            ) : (
+                              <CheckCircle2 className="text-green-600 w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {services.length === 0 && (
               <p className="text-center text-gray-500 mt-4">
                 No services added.
