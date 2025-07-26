@@ -1,4 +1,5 @@
 import AdminDashboard from "@/pages/admin/pages/AdminDashboard";
+import AdminFormBuilder from "@/pages/admin/pages/AdminFormBuilder";
 import AdminLayout from "@/pages/admin/pages/AdminLayout";
 import AdminLogin from "@/pages/admin/pages/AdminLogin";
 import AdminServices from "@/pages/admin/pages/AdminServices";
@@ -11,6 +12,7 @@ const adminRoutes = (
       <Route index element={<AdminDashboard />} />
       <Route path="services" element={<AdminServices />} />
       <Route path="tournaments" element={<AdminTournaments />} />
+      <Route path="createform" element={<AdminFormBuilder />} />
     </Route>
 
     

@@ -22,6 +22,8 @@ const AdminServices = () => {
   const [error, setError] = useState("");
   const [editServiceId, setEditServiceId] = useState(null);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc"); // or "desc"
 
   const [moduleData, setModuleData] = useState({
     name: "",
@@ -638,6 +640,40 @@ const AdminServices = () => {
               All Services
             </h2>
             <div className="overflow-x-auto">
+              <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                <div>
+                  <label className="mr-2 text-sm font-medium text-gray-700">
+                    Filter by Category:
+                  </label>
+                  <select
+                    value={selectedCategoryFilter}
+                    onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1"
+                  >
+                    <option value="">All</option>
+                    {categories.map((cat) => (
+                      <option key={cat._id} value={cat._id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mr-2 text-sm font-medium text-gray-700">
+                    Sort by Category:
+                  </label>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1"
+                  >
+                    <option value="asc">A → Z</option>
+                    <option value="desc">Z → A</option>
+                  </select>
+                </div>
+              </div>
+
               <table className="w-full min-w-[800px] table-auto border border-gray-300 rounded-lg overflow-hidden">
                 <thead>
                   <tr className="bg-green-100 text-left text-sm text-green-800">
@@ -654,65 +690,82 @@ const AdminServices = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {services.map((srv, index) => (
-                    <tr key={index} className="hover:bg-green-50 transition">
-                      <td className="p-3 border border-gray-200">
-                        {srv.category?.name || "N/A"}
-                      </td>
-                      {/* <td className="p-3 border border-gray-200">
+                  {services
+                    .filter((srv) =>
+                      selectedCategoryFilter
+                        ? srv.category?._id === selectedCategoryFilter
+                        : true
+                    )
+                    .sort((a, b) => {
+                      const nameA = a.category?.name?.toLowerCase() || "";
+                      const nameB = b.category?.name?.toLowerCase() || "";
+                      return sortOrder === "asc"
+                        ? nameA.localeCompare(nameB)
+                        : nameB.localeCompare(nameA);
+                    })
+                    .map((srv, index) => (
+                      <tr key={index} className="hover:bg-green-50 transition">
+                        <td className="p-3 border border-gray-200">
+                          {srv.category?.name || "N/A"}
+                        </td>
+                        {/* <td className="p-3 border border-gray-200">
                         {srv.category?.active ? (
                           <span className="text-green-600">Active</span>
                         ) : (
                           <span className="text-red-500">Inactive</span>
                         )}
                       </td> */}
-                      <td className="p-3 border border-gray-200">{srv.name}</td>
-                      <td className="p-3 border border-gray-200">
-                        ₹{srv.price}
-                      </td>
-                      <td className="p-3 border border-gray-200">
-                        {srv.duration}
-                      </td>
-                      <td className="p-3 border border-gray-200">
-                        {srv.features.slice(0, 3).join(", ")}
-                        {srv.features.length > 3 && (
-                          <span className="text-gray-400">...</span>
-                        )}
-                      </td>
-                      <td className="p-3 border border-gray-200">
-                        {srv.isPopular ? (
-                          <span className="text-green-600 font-semibold">
-                            Yes
-                          </span>
-                        ) : (
-                          <span className="text-gray-500">No</span>
-                        )}
-                      </td>
-                      <td className="p-3 border border-gray-200 text-center">
-                        <div className="flex justify-center gap-3">
-                          <button
-                            onClick={() => handleEditService(index)}
-                            title="Edit"
-                            className="hover:text-blue-600"
-                          >
-                            <PencilLine className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleToggleServiceActive(index)}
-                            title={
-                              services[index].active ? "Deactivate" : "Activate"
-                            }
-                          >
-                            {services[index].active ? (
-                              <Ban className="text-yellow-600 w-4 h-4" />
-                            ) : (
-                              <CheckCircle2 className="text-green-600 w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="p-3 border border-gray-200">
+                          {srv.name}
+                        </td>
+                        <td className="p-3 border border-gray-200">
+                          ₹{srv.price}
+                        </td>
+                        <td className="p-3 border border-gray-200">
+                          {srv.duration}
+                        </td>
+                        <td className="p-3 border border-gray-200">
+                          {srv.features.slice(0, 3).join(", ")}
+                          {srv.features.length > 3 && (
+                            <span className="text-gray-400">...</span>
+                          )}
+                        </td>
+                        <td className="p-3 border border-gray-200">
+                          {srv.isPopular ? (
+                            <span className="text-green-600 font-semibold">
+                              Yes
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">No</span>
+                          )}
+                        </td>
+                        <td className="p-3 border border-gray-200 text-center">
+                          <div className="flex justify-center gap-3">
+                            <button
+                              onClick={() => handleEditService(index)}
+                              title="Edit"
+                              className="hover:text-blue-600"
+                            >
+                              <PencilLine className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleToggleServiceActive(index)}
+                              title={
+                                services[index].active
+                                  ? "Deactivate"
+                                  : "Activate"
+                              }
+                            >
+                              {services[index].active ? (
+                                <Ban className="text-yellow-600 w-4 h-4" />
+                              ) : (
+                                <CheckCircle2 className="text-green-600 w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>

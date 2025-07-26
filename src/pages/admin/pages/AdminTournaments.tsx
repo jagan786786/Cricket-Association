@@ -34,6 +34,8 @@ const AdminTournaments = () => {
     mapurl: "",
   });
   const [editTournamentId, setEditTournamentId] = useState(null);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
 
   useEffect(() => {
     if (menuItemId) {
@@ -100,9 +102,7 @@ const AdminTournaments = () => {
       return;
     }
 
-    if (
-      !window.confirm(`Are you sure you want to ${action} this category?`)
-    )
+    if (!window.confirm(`Are you sure you want to ${action} this category?`))
       return;
 
     try {
@@ -178,11 +178,7 @@ const AdminTournaments = () => {
 
   const toggleTournamentActive = async (id, name, active) => {
     const action = active ? "deactivate" : "activate";
-    if (
-      !window.confirm(
-        `Are you sure you want to ${action} this tournament?`
-      )
-    )
+    if (!window.confirm(`Are you sure you want to ${action} this tournament?`))
       return;
 
     try {
@@ -366,6 +362,40 @@ const AdminTournaments = () => {
             <h2 className="text-2xl font-semibold text-green-800 mb-4">
               All Tournaments
             </h2>
+            <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+              <div>
+                <label className="mr-2 text-sm font-medium text-gray-700">
+                  Filter by Category:
+                </label>
+                <select
+                  value={selectedCategoryFilter}
+                  onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1"
+                >
+                  <option value="">All</option>
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat._id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mr-2 text-sm font-medium text-gray-700">
+                  Sort by Category:
+                </label>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1"
+                >
+                  <option value="asc">A → Z</option>
+                  <option value="desc">Z → A</option>
+                </select>
+              </div>
+            </div>
+
             <table className="w-full table-auto border">
               <thead>
                 <tr className="bg-green-100 text-left">
@@ -378,48 +408,61 @@ const AdminTournaments = () => {
                 </tr>
               </thead>
               <tbody>
-                {tournaments.map((tour) => (
-                  <tr key={tour._id} className="border-b hover:bg-green-50">
-                    <td className="p-2 border">{tour.category?.name}</td>
-                    <td className="p-2 border">{tour.name}</td>
-                    <td className="p-2 border">{tour.date?.slice(0, 10)}</td>
-                    <td className="p-2 border">
-                      <a
-                        href={tour.mapurl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline"
-                      >
-                        {tour.location}
-                      </a>
-                    </td>
-                    <td className="p-2 border">₹{tour.entryFee}</td>
-                    <td className="p-2 border text-center flex justify-center gap-4">
-                      <button
-                        onClick={() => handleEditTournament(tour)}
-                        title="Edit"
-                      >
-                        <PencilLine className="w-4 text-blue-600" />
-                      </button>
-                      <button
-                        onClick={() =>
-                          toggleTournamentActive(
-                            tour._id,
-                            tour.name,
-                            tour.active
-                          )
-                        }
-                        title={tour.active ? "Deactivate" : "Activate"}
-                      >
-                        {tour.active ? (
-                          <Ban className="w-4 text-yellow-600" />
-                        ) : (
-                          <CheckCircle2 className="w-4 text-green-600" />
-                        )}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {tournaments
+                  .filter((tour) =>
+                    selectedCategoryFilter
+                      ? tour.category?._id === selectedCategoryFilter
+                      : true
+                  )
+                  .sort((a, b) => {
+                    const nameA = a.category?.name?.toLowerCase() || "";
+                    const nameB = b.category?.name?.toLowerCase() || "";
+                    return sortOrder === "asc"
+                      ? nameA.localeCompare(nameB)
+                      : nameB.localeCompare(nameA);
+                  })
+                  .map((tour) => (
+                    <tr key={tour._id} className="border-b hover:bg-green-50">
+                      <td className="p-2 border">{tour.category?.name}</td>
+                      <td className="p-2 border">{tour.name}</td>
+                      <td className="p-2 border">{tour.date?.slice(0, 10)}</td>
+                      <td className="p-2 border">
+                        <a
+                          href={tour.mapurl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline"
+                        >
+                          {tour.location}
+                        </a>
+                      </td>
+                      <td className="p-2 border">₹{tour.entryFee}</td>
+                      <td className="p-2 border text-center flex justify-center gap-4">
+                        <button
+                          onClick={() => handleEditTournament(tour)}
+                          title="Edit"
+                        >
+                          <PencilLine className="w-4 text-blue-600" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            toggleTournamentActive(
+                              tour._id,
+                              tour.name,
+                              tour.active
+                            )
+                          }
+                          title={tour.active ? "Deactivate" : "Activate"}
+                        >
+                          {tour.active ? (
+                            <Ban className="w-4 text-yellow-600" />
+                          ) : (
+                            <CheckCircle2 className="w-4 text-green-600" />
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
             {tournaments.length === 0 && (
