@@ -4,6 +4,7 @@ import AdminLayout from "@/pages/admin/pages/AdminLayout";
 import AdminLogin from "@/pages/admin/pages/AdminLogin";
 import AdminServices from "@/pages/admin/pages/AdminServices";
 import AdminTournaments from "@/pages/admin/pages/AdminTournaments";
+import FormList from "@/pages/admin/pages/FormList";
 import { Route } from "react-router-dom";
 
 const adminRoutes = (
@@ -13,6 +14,7 @@ const adminRoutes = (
       <Route path="services" element={<AdminServices />} />
       <Route path="tournaments" element={<AdminTournaments />} />
       <Route path="createform" element={<AdminFormBuilder />} />
+      <Route path="forms" element={<FormList />} />
     </Route>
 
     

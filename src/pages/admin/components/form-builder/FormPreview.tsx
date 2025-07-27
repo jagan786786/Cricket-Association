@@ -351,7 +351,7 @@ export function FormPreview({ config, mode = "preview" }: FormPreviewProps) {
             <div className="flex items-center justify-between">
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg shadow-lg">
+                  <div className="p-2 bg-gradient-to-r from-indigo-500 to-green-600 rounded-lg shadow-lg">
                     <Sparkles className="h-5 w-5 text-white" />
                   </div>
                   <div>

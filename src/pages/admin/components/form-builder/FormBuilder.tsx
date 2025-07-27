@@ -1,21 +1,48 @@
-import { useState, useEffect } from "react"
-import type { FormConfig, FormField, FormLayout, SubmitButton, FormSubmission } from "../../types/form-builder"
-import { FormFieldConfig } from "./FormFieldConfig"
-import { FormPreview } from "./FormPreview"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Plus, Settings, Eye, Save, Palette, Layers, Zap, Sparkles, Info } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { useState, useEffect } from "react";
+import type {
+  FormConfig,
+  FormField,
+  FormLayout,
+  SubmitButton,
+  FormSubmission,
+} from "../../types/form-builder";
+import { FormFieldConfig } from "./FormFieldConfig";
+import { FormPreview } from "./FormPreview";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Plus,
+  Settings,
+  Eye,
+  Save,
+  Palette,
+  Layers,
+  Zap,
+  Sparkles,
+  Info,
+} from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
-const generateId = () => Math.random().toString(36).substr(2, 9)
+const generateId = () => Math.random().toString(36).substr(2, 9);
 
 const defaultFormConfig: FormConfig = {
   id: generateId(),
@@ -37,37 +64,55 @@ const defaultFormConfig: FormConfig = {
   },
   createdAt: new Date(),
   updatedAt: new Date(),
-}
+};
 
 export function FormBuilder() {
-  const [config, setConfig] = useState<FormConfig | null>(null)
-  const [activeTab, setActiveTab] = useState("fields")
-  const [isAnimating, setIsAnimating] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [config, setConfig] = useState<FormConfig | null>(null);
+  const [activeTab, setActiveTab] = useState("fields");
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize config on component mount
+  // ✅ New state for menu + instance
+  const [selectedMenuItem, setSelectedMenuItem] = useState<string>("");
+
+  // ✅ Menu items and instance map
+  const menuItemsOptions = [
+    { id: "menu1", name: "Menu 1" },
+    { id: "menu2", name: "Menu 2" },
+  ];
+
+  const instanceOptionsMap: Record<string, { id: string; name: string }[]> = {
+    menu1: [
+      { id: "inst1", name: "Instance A" },
+      { id: "inst2", name: "Instance B" },
+    ],
+    menu2: [
+      { id: "inst3", name: "Instance C" },
+      { id: "inst4", name: "Instance D" },
+    ],
+  };
+
   useEffect(() => {
     const initializeConfig = () => {
       try {
-        const savedConfig = localStorage.getItem("formBuilderConfig")
+        const savedConfig = localStorage.getItem("formBuilderConfig");
         if (savedConfig) {
-          const parsed = JSON.parse(savedConfig)
-          setConfig(parsed)
+          const parsed = JSON.parse(savedConfig);
+          setConfig(parsed);
         } else {
-          setConfig(defaultFormConfig)
+          setConfig(defaultFormConfig);
         }
       } catch (error) {
-        console.error("Error loading saved config:", error)
-        setConfig(defaultFormConfig)
+        console.error("Error loading saved config:", error);
+        setConfig(defaultFormConfig);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    initializeConfig()
-  }, [])
+    initializeConfig();
+  }, []);
 
-  // Show loading state while config is being initialized
   if (isLoading || !config) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 flex items-center justify-center">
@@ -76,7 +121,7 @@ export function FormBuilder() {
           <p className="text-slate-600">Loading Form Builder...</p>
         </div>
       </div>
-    )
+    );
   }
 
   const updateConfig = (updates: Partial<FormConfig>) => {
@@ -86,12 +131,12 @@ export function FormBuilder() {
           ...prev,
           ...updates,
           updatedAt: new Date(),
-        }) as FormConfig,
-    )
-  }
+        } as FormConfig)
+    );
+  };
 
   const addField = () => {
-    setIsAnimating(true)
+    setIsAnimating(true);
     const newField: FormField = {
       id: generateId(),
       name: `field_${config.fields.length + 1}`,
@@ -105,69 +150,74 @@ export function FormBuilder() {
       validation: [],
       required: false,
       placeholder: "",
-    }
+    };
 
     setTimeout(() => {
       updateConfig({
         fields: [...config.fields, newField],
-      })
-      setIsAnimating(false)
-    }, 150)
-  }
+      });
+      setIsAnimating(false);
+    }, 150);
+  };
 
   const updateField = (updatedField: FormField) => {
     updateConfig({
-      fields: config.fields.map((field) => (field.id === updatedField.id ? updatedField : field)),
-    })
-  }
+      fields: config.fields.map((field) =>
+        field.id === updatedField.id ? updatedField : field
+      ),
+    });
+  };
 
   const deleteField = (fieldId: string) => {
     updateConfig({
       fields: config.fields.filter((field) => field.id !== fieldId),
-    })
-  }
+    });
+  };
 
   const updateLayout = (layout: Partial<FormLayout>) => {
     updateConfig({
       layout: { ...config.layout, ...layout },
-    })
+    });
 
     const updatedFields = config.fields.map((field, index) => ({
       ...field,
       position: {
-        row: Math.floor(index / (layout.fieldsPerRow || config.layout.fieldsPerRow)),
+        row: Math.floor(
+          index / (layout.fieldsPerRow || config.layout.fieldsPerRow)
+        ),
         column: index % (layout.fieldsPerRow || config.layout.fieldsPerRow),
       },
-    }))
+    }));
 
-    updateConfig({ fields: updatedFields })
-  }
+    updateConfig({ fields: updatedFields });
+  };
 
   const updateSubmitButton = (button: Partial<SubmitButton>) => {
     updateConfig({
       submitButton: { ...config.submitButton, ...button },
-    })
-  }
+    });
+  };
 
   const updateSubmission = (submission: Partial<FormSubmission>) => {
     updateConfig({
       submission: { ...config.submission, ...submission },
-    })
-  }
+    });
+  };
 
   const saveForm = () => {
-    localStorage.setItem("formBuilderConfig", JSON.stringify(config))
+    localStorage.setItem("formBuilderConfig", JSON.stringify(config));
     toast({
       title: "✨ Form Saved Successfully",
-      description: "Your form configuration has been saved and is ready to use.",
-    })
-  }
+      description:
+        "Your form configuration has been saved and is ready to use.",
+    });
+  };
 
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
         <div className="container mx-auto p-6">
-          {/* Enhanced Header */}
+          {/* HEADER */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div className="space-y-2">
@@ -179,7 +229,9 @@ export function FormBuilder() {
                     <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-green-600 to-purple-600 bg-clip-text text-transparent">
                       Form Builder
                     </h1>
-                    <p className="text-slate-600 text-lg">Create beautiful, dynamic forms with ease</p>
+                    <p className="text-slate-600 text-lg">
+                      Create beautiful, dynamic forms with ease
+                    </p>
                   </div>
                 </div>
               </div>
@@ -213,7 +265,11 @@ export function FormBuilder() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[calc(100vh-220px)]">
             {/* Enhanced Configuration Panel */}
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="h-full flex flex-col"
+              >
                 <TabsList className="grid w-full grid-cols-4 bg-slate-50/80 backdrop-blur-sm m-2 rounded-xl p-1">
                   <TabsTrigger
                     value="fields"
@@ -249,8 +305,12 @@ export function FormBuilder() {
                   <TabsContent value="fields" className="p-6 space-y-6 m-0">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-xl font-semibold text-slate-800">Form Fields</h3>
-                        <p className="text-slate-600 text-sm">Add and configure your form fields</p>
+                        <h3 className="text-xl font-semibold text-slate-800">
+                          Form Fields
+                        </h3>
+                        <p className="text-slate-600 text-sm">
+                          Add and configure your form fields
+                        </p>
                       </div>
                       <Button
                         onClick={addField}
@@ -270,8 +330,13 @@ export function FormBuilder() {
                               <Plus className="h-8 w-8 text-blue-600" />
                             </div>
                             <div>
-                              <h4 className="text-lg font-medium text-slate-800 mb-2">No fields added yet</h4>
-                              <p className="text-slate-600 mb-6">Start building your form by adding your first field</p>
+                              <h4 className="text-lg font-medium text-slate-800 mb-2">
+                                No fields added yet
+                              </h4>
+                              <p className="text-slate-600 mb-6">
+                                Start building your form by adding your first
+                                field
+                              </p>
                               <Button
                                 onClick={addField}
                                 className="bg-green-600 hover:bg-green-700 text-white shadow-lg transition-all duration-200 "
@@ -290,7 +355,11 @@ export function FormBuilder() {
                               className="animate-in slide-in-from-top-2 duration-300"
                               style={{ animationDelay: `${index * 50}ms` }}
                             >
-                              <FormFieldConfig field={field} onUpdate={updateField} onDelete={deleteField} />
+                              <FormFieldConfig
+                                field={field}
+                                onUpdate={updateField}
+                                onDelete={deleteField}
+                              />
                             </div>
                           ))}
                         </div>
@@ -300,18 +369,28 @@ export function FormBuilder() {
 
                   <TabsContent value="layout" className="p-6 space-y-6 m-0">
                     <div>
-                      <h3 className="text-xl font-semibold text-slate-800">Layout Settings</h3>
-                      <p className="text-slate-600 text-sm">Configure how your form is displayed</p>
+                      <h3 className="text-xl font-semibold text-slate-800">
+                        Layout Settings
+                      </h3>
+                      <p className="text-slate-600 text-sm">
+                        Configure how your form is displayed
+                      </p>
                     </div>
 
                     <Card className="bg-gradient-to-br from-white to-slate-50/50 border-0 shadow-lg">
                       <CardContent className="p-6 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-3">
-                            <Label className="text-sm font-medium text-slate-700">Grid Columns</Label>
+                            <Label className="text-sm font-medium text-slate-700">
+                              Grid Columns
+                            </Label>
                             <Select
                               value={config.layout.columns.toString()}
-                              onValueChange={(value) => updateLayout({ columns: Number(value) as 2 | 3 })}
+                              onValueChange={(value) =>
+                                updateLayout({
+                                  columns: Number(value) as 2 | 3,
+                                })
+                              }
                             >
                               <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
                                 <SelectValue />
@@ -324,10 +403,16 @@ export function FormBuilder() {
                           </div>
 
                           <div className="space-y-3">
-                            <Label className="text-sm font-medium text-slate-700">Fields Per Row</Label>
+                            <Label className="text-sm font-medium text-slate-700">
+                              Fields Per Row
+                            </Label>
                             <Select
                               value={config.layout.fieldsPerRow.toString()}
-                              onValueChange={(value) => updateLayout({ fieldsPerRow: Number(value) as 2 | 3 })}
+                              onValueChange={(value) =>
+                                updateLayout({
+                                  fieldsPerRow: Number(value) as 2 | 3,
+                                })
+                              }
                             >
                               <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
                                 <SelectValue />
@@ -341,10 +426,14 @@ export function FormBuilder() {
                         </div>
 
                         <div className="space-y-3">
-                          <Label className="text-sm font-medium text-slate-700">Spacing</Label>
+                          <Label className="text-sm font-medium text-slate-700">
+                            Spacing
+                          </Label>
                           <Select
                             value={config.layout.spacing}
-                            onValueChange={(value: "sm" | "md" | "lg") => updateLayout({ spacing: value })}
+                            onValueChange={(value: "sm" | "md" | "lg") =>
+                              updateLayout({ spacing: value })
+                            }
                           >
                             <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
                               <SelectValue />
@@ -362,17 +451,25 @@ export function FormBuilder() {
 
                   <TabsContent value="style" className="p-6 space-y-6 m-0">
                     <div>
-                      <h3 className="text-xl font-semibold text-slate-800">Submit Button Style</h3>
-                      <p className="text-slate-600 text-sm">Customize your form's submit button</p>
+                      <h3 className="text-xl font-semibold text-slate-800">
+                        Submit Button Style
+                      </h3>
+                      <p className="text-slate-600 text-sm">
+                        Customize your form's submit button
+                      </p>
                     </div>
 
                     <Card className="bg-gradient-to-br from-white to-slate-50/50 border-0 shadow-lg">
                       <CardContent className="p-6 space-y-6">
                         <div className="space-y-3">
-                          <Label className="text-sm font-medium text-slate-700">Button Text</Label>
+                          <Label className="text-sm font-medium text-slate-700">
+                            Button Text
+                          </Label>
                           <Input
                             value={config.submitButton.text}
-                            onChange={(e) => updateSubmitButton({ text: e.target.value })}
+                            onChange={(e) =>
+                              updateSubmitButton({ text: e.target.value })
+                            }
                             placeholder="Submit"
                             className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
                           />
@@ -380,35 +477,49 @@ export function FormBuilder() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-3">
-                            <Label className="text-sm font-medium text-slate-700">Button Style</Label>
+                            <Label className="text-sm font-medium text-slate-700">
+                              Button Style
+                            </Label>
                             <Select
                               value={config.submitButton.type}
-                              onValueChange={(value: SubmitButton["type"]) => updateSubmitButton({ type: value })}
+                              onValueChange={(value: SubmitButton["type"]) =>
+                                updateSubmitButton({ type: value })
+                              }
                             >
                               <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="primary">Primary</SelectItem>
-                                <SelectItem value="secondary">Secondary</SelectItem>
+                                <SelectItem value="secondary">
+                                  Secondary
+                                </SelectItem>
                                 <SelectItem value="outline">Outline</SelectItem>
-                                <SelectItem value="gradient">Gradient</SelectItem>
+                                <SelectItem value="gradient">
+                                  Gradient
+                                </SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
 
                           <div className="space-y-3">
-                            <Label className="text-sm font-medium text-slate-700">Custom Color</Label>
+                            <Label className="text-sm font-medium text-slate-700">
+                              Custom Color
+                            </Label>
                             <div className="flex gap-2">
                               <Input
                                 type="color"
                                 value={config.submitButton.color || "#3b82f6"}
-                                onChange={(e) => updateSubmitButton({ color: e.target.value })}
+                                onChange={(e) =>
+                                  updateSubmitButton({ color: e.target.value })
+                                }
                                 className="w-16 h-10 p-1 bg-white border-slate-200"
                               />
                               <Input
                                 value={config.submitButton.color || "#3b82f6"}
-                                onChange={(e) => updateSubmitButton({ color: e.target.value })}
+                                onChange={(e) =>
+                                  updateSubmitButton({ color: e.target.value })
+                                }
                                 placeholder="#3b82f6"
                                 className="flex-1 bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
                               />
@@ -421,37 +532,98 @@ export function FormBuilder() {
 
                   <TabsContent value="config" className="p-6 space-y-6 m-0">
                     <div>
-                      <h3 className="text-xl font-semibold text-slate-800">Form Configuration</h3>
-                      <p className="text-slate-600 text-sm">Set up form details and submission settings</p>
+                      <h3 className="text-xl font-semibold text-slate-800">
+                        Form Configuration
+                      </h3>
+                      <p className="text-slate-600 text-sm">
+                        Set up form details and submission settings
+                      </p>
                     </div>
 
                     <Card className="bg-gradient-to-br from-white to-slate-50/50 border-0 shadow-lg">
                       <CardContent className="p-6 space-y-6">
                         <div className="space-y-3">
-                          <Label className="text-sm font-medium text-slate-700">Form Name</Label>
+                          <Label className="text-sm font-medium text-slate-700">
+                            Form Name
+                          </Label>
                           <Input
                             value={config.name}
-                            onChange={(e) => updateConfig({ name: e.target.value })}
+                            onChange={(e) =>
+                              updateConfig({ name: e.target.value })
+                            }
                             placeholder="My Awesome Form"
                             className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
                           />
                         </div>
 
                         <div className="space-y-3">
-                          <Label className="text-sm font-medium text-slate-700">Description</Label>
+                          <Label className="text-sm font-medium text-slate-700">
+                            Description
+                          </Label>
                           <Textarea
                             value={config.description || ""}
-                            onChange={(e) => updateConfig({ description: e.target.value })}
+                            onChange={(e) =>
+                              updateConfig({ description: e.target.value })
+                            }
                             placeholder="Describe what this form is for..."
                             className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 min-h-[100px]"
                           />
+                        </div>
+
+                        {/* --- Custom: Menu Item Dropdown --- */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium text-slate-700">
+                            Menu Item
+                          </Label>
+                          <Select
+                            onValueChange={(value) =>
+                              setSelectedMenuItem(value)
+                            }
+                          >
+                            <SelectTrigger className="bg-white border-slate-200">
+                              <SelectValue placeholder="Select a menu item" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {menuItemsOptions.map((item) => (
+                                <SelectItem key={item.id} value={item.id}>
+                                  {item.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* --- Custom: Instance Dropdown --- */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium text-slate-700">
+                            Instance
+                          </Label>
+                          <Select disabled={!selectedMenuItem}>
+                            <SelectTrigger className="bg-white border-slate-200">
+                              <SelectValue placeholder="Select an instance" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(instanceOptionsMap[selectedMenuItem] || []).map(
+                                (instance) => (
+                                  <SelectItem
+                                    key={instance.id}
+                                    value={instance.id}
+                                  >
+                                    {instance.name}
+                                  </SelectItem>
+                                )
+                              )}
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         <Separator className="bg-slate-200" />
 
                         <div className="space-y-6">
                           <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-medium text-slate-700">Submission Settings</h4>
+                            <h4 className="text-sm font-medium text-slate-700">
+                              Submission Settings
+                            </h4>
                             <Tooltip>
                               <TooltipTrigger>
                                 <Info className="h-4 w-4 text-slate-400" />
@@ -463,20 +635,30 @@ export function FormBuilder() {
                           </div>
 
                           <div className="space-y-3">
-                            <Label className="text-sm font-medium text-slate-700">Callback URL</Label>
+                            <Label className="text-sm font-medium text-slate-700">
+                              Callback URL
+                            </Label>
                             <Input
                               value={config.submission.callbackUrl}
-                              onChange={(e) => updateSubmission({ callbackUrl: e.target.value })}
+                              onChange={(e) =>
+                                updateSubmission({
+                                  callbackUrl: e.target.value,
+                                })
+                              }
                               placeholder="https://api.example.com/submit"
                               className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
                             />
                           </div>
 
                           <div className="space-y-3">
-                            <Label className="text-sm font-medium text-slate-700">HTTP Method</Label>
+                            <Label className="text-sm font-medium text-slate-700">
+                              HTTP Method
+                            </Label>
                             <Select
                               value={config.submission.method}
-                              onValueChange={(value: "POST" | "PUT") => updateSubmission({ method: value })}
+                              onValueChange={(value: "POST" | "PUT") =>
+                                updateSubmission({ method: value })
+                              }
                             >
                               <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
                                 <SelectValue />
@@ -503,8 +685,12 @@ export function FormBuilder() {
                     <Eye className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-800">Live Preview</h3>
-                    <p className="text-slate-600 text-sm">See your form in real-time</p>
+                    <h3 className="text-lg font-semibold text-slate-800">
+                      Live Preview
+                    </h3>
+                    <p className="text-slate-600 text-sm">
+                      See your form in real-time
+                    </p>
                   </div>
                 </div>
               </div>
@@ -516,5 +702,5 @@ export function FormBuilder() {
         </div>
       </div>
     </TooltipProvider>
-  )
+  );
 }

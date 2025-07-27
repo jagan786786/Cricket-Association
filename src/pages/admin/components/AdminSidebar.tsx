@@ -23,6 +23,7 @@ interface MenuItem {
 
 export function AdminSidebar() {
   const [dynamicItems, setDynamicItems] = useState<MenuItem[]>([]);
+  const [formMenuOpen, setFormMenuOpen] = useState<boolean>(false);
   const location = useLocation();
 
   const staticNavigationItems: MenuItem[] = [
@@ -60,6 +61,11 @@ export function AdminSidebar() {
 
   const navigationItems = [...staticNavigationItems, ...dynamicItems];
 
+  // Check if current path is related to forms
+  const isFormPath =
+    location.pathname.startsWith("/admin/forms") ||
+    location.pathname === "/admin/createform";
+
   return (
     <aside className="w-64 bg-card border-r border-border">
       <div className="p-6">
@@ -75,6 +81,7 @@ export function AdminSidebar() {
 
         {/* Navigation */}
         <nav className="space-y-2">
+          {/* Static and Dynamic Items */}
           {navigationItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
@@ -96,6 +103,55 @@ export function AdminSidebar() {
               </Link>
             );
           })}
+
+          {/* Form Dropdown */}
+          <div className="space-y-1">
+            <button
+              onClick={() => setFormMenuOpen((prev) => !prev)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                isFormPath
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+            >
+              <LucideIcons.FilePlus2 className="w-4 h-4" />
+              Form
+              <LucideIcons.ChevronDown
+                className={cn(
+                  "w-4 h-4 ml-auto transition-transform",
+                  formMenuOpen || isFormPath ? "rotate-180" : "rotate-0"
+                )}
+              />
+            </button>
+
+            {(formMenuOpen || isFormPath) && (
+              <div className="ml-6 space-y-1">
+                <Link
+                  to="/admin/forms"
+                  className={cn(
+                    "block text-sm px-3 py-1 rounded-md transition-colors",
+                    location.pathname === "/admin/forms"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  All Forms
+                </Link>
+                <Link
+                  to="/admin/createform"
+                  className={cn(
+                    "block text-sm px-3 py-1 rounded-md transition-colors",
+                    location.pathname === "/admin/createform"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  Create Form
+                </Link>
+              </div>
+            )}
+          </div>
         </nav>
       </div>
     </aside>
