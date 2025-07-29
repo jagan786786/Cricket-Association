@@ -421,6 +421,7 @@ const AdminTournaments = () => {
                       ? nameA.localeCompare(nameB)
                       : nameB.localeCompare(nameA);
                   })
+
                   .map((tour) => (
                     <tr key={tour._id} className="border-b hover:bg-green-50">
                       <td className="p-2 border">{tour.category?.name}</td>
