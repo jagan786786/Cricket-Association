@@ -29,7 +29,7 @@ export default function FormList() {
 
   const fetchForms = async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/forms"); // adjust base path if needed
+      const res = await axios.get("https://cricket-association-backend.onrender.com/api/forms"); // adjust base path if needed
       setForms(res.data);
     } catch (err) {
       console.error("Failed to fetch forms:", err);
@@ -38,7 +38,7 @@ export default function FormList() {
 
   const handleToggle = async (formId, currentStatus) => {
     try {
-      await axios.patch(`http://localhost:4000/api/form/${formId}/activate`, {
+      await axios.patch(`https://cricket-association-backend.onrender.com/api/form/${formId}/activate`, {
         isActive: !currentStatus,
       });
       fetchForms(); // Refresh state

@@ -28,7 +28,9 @@ export default function FormPreview() {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        const res = await axios.get(`http://localhost:4000/api/form/${id}`);
+        const res = await axios.get(
+          `https://cricket-association-backend.onrender.com/api/form/${id}`
+        );
         console.log(res.data);
         setForm(res.data);
       } catch (err) {

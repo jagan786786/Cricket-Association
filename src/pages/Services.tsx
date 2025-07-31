@@ -58,7 +58,7 @@ const Services = () => {
         }
 
         const { data: categoryRes } = await axios.get(
-          `http://localhost:4000/api/categories/menuitem/${menuItemId}`
+          `https://cricket-association-backend.onrender.com/api/categories/menuitem/${menuItemId}`
         );
 
         const allCategories = categoryRes.categories || [];
@@ -73,7 +73,7 @@ const Services = () => {
         }));
 
         const modulePromises = limitedCategories.map((cat) =>
-          axios.get(`http://localhost:4000/api/modules/category/${cat._id}`)
+          axios.get(`https://cricket-association-backend.onrender.com/api/modules/category/${cat._id}`)
         );
 
         const moduleResponses = await Promise.all(modulePromises);
@@ -126,11 +126,11 @@ const Services = () => {
     };
 
     try {
-      const res = await axios.post("http://localhost:4000/api/module", payload);
+      const res = await axios.post("https://cricket-association-backend.onrender.com/api/module", payload);
       setFormMessage("Module created successfully!");
 
       const updated = await axios.get(
-        `http://localhost:4000/api/modules/category/${formData.category}`
+        `https://cricket-association-backend.onrender.com/api/modules/category/${formData.category}`
       );
       setModulesByCategory((prev) => ({
         ...prev,

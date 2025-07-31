@@ -8,7 +8,7 @@ const tabs = [
   { id: "add", label: "Add Tournaments" },
 ];
 
-const API_BASE = "http://localhost:4000/api";
+const API_BASE = "https://cricket-association-backend.onrender.com/api";
 
 const AdminTournaments = () => {
   const location = useLocation();

@@ -5,6 +5,7 @@ import * as LucideIcons from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+
 // Helper to get icon component from string
 function getLucideIcon(name: string) {
   return LucideIcons[name] || LucideIcons.Circle;
@@ -29,7 +30,7 @@ const Navigation = () => {
   useEffect(() => {
     async function fetchMenuItems() {
       try {
-        const res = await fetch("http://localhost:4000/api/menuitems");
+        const res = await fetch("https://cricket-association-backend.onrender.com/api/menuitems");
         const data = await res.json();
 
         const mapped = data.menuItems.map(
@@ -109,7 +110,7 @@ const Navigation = () => {
 
           {/* CTA Button */}
           <div className="hidden md:block">
-            <Button className="btn-hero">Join Now</Button>
+            <Button  className="btn-hero">Join Now</Button>
           </div>
 
           {/* Mobile menu button */}

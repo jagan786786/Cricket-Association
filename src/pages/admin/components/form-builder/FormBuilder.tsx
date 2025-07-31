@@ -43,7 +43,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 
 // API URL -- change as needed if using a prefix like /api, /v1, etc.
-const API_BASE_URL = "http://localhost:4000/api";
+const API_BASE_URL = "https://cricket-association-backend.onrender.com/api";
 
 // Generate frontend "fake" field id, only for builder
 const generateId = () => Math.random().toString(36).substr(2, 9);
