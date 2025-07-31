@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,42 +17,46 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarProvider,
-  SidebarInset,
-} from "@/components/ui/sidebar";
-import {
-  ChevronRight,
-  Eye,
-  Plus,
-  BarChart3,
-  FileText,
-  FormInput,
-} from "lucide-react";
+import { SidebarInset } from "@/components/ui/sidebar";
+import { Eye, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function FormList() {
   const navigate = useNavigate();
+  const [forms, setForms] = useState([]);
+  const [selectedForm, setSelectedForm] = useState(null);
+
+  const fetchForms = async () => {
+    try {
+      const res = await axios.get("http://localhost:4000/api/forms"); // adjust base path if needed
+      setForms(res.data);
+    } catch (err) {
+      console.error("Failed to fetch forms:", err);
+    }
+  };
+
+  const handleToggle = async (formId, currentStatus) => {
+    try {
+      await axios.patch(`http://localhost:4000/api/form/${formId}/activate`, {
+        isActive: !currentStatus,
+      });
+      fetchForms(); // Refresh state
+    } catch (err) {
+      console.error("Failed to toggle form:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchForms();
+  }, []);
+
   return (
     <div className="flex min-h-screen w-full">
       <SidebarInset className="flex-1">
         <div className="flex flex-col">
-         
-
-          {/* Main Content */}
           <div className="flex-1 p-6">
             <div className="max-w-7xl mx-auto">
-              {/* Forms Header */}
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h2 className="text-2xl font-bold mb-2">Forms</h2>
@@ -68,11 +73,12 @@ export default function FormList() {
                 </Button>
               </div>
 
-              {/* All Forms Section */}
-              <Card>
+              <Card className="mb-8">
                 <CardHeader>
                   <CardTitle>All Forms</CardTitle>
-                  <CardDescription>1 form created</CardDescription>
+                  <CardDescription>
+                    {forms.length} form(s) created
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -86,34 +92,70 @@ export default function FormList() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell className="font-medium">
-                          Indian Premier league
-                        </TableCell>
-                        <TableCell>A New Tournamenet for cricket</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Switch defaultChecked />
-                            <Badge
-                              variant="secondary"
-                              className="bg-slate-900 text-white hover:bg-slate-800"
+                      {forms.map((form) => (
+                        <TableRow key={form._id}>
+                          <TableCell className="font-medium">
+                            {form.formId?.name}
+                          </TableCell>
+                          <TableCell>{form.formId?.description}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={form.isActive}
+                                onCheckedChange={() =>
+                                  handleToggle(form.formId._id, form.isActive)
+                                }
+                              />
+                              <Badge
+                                variant="secondary"
+                                className={`${
+                                  form.isActive
+                                    ? "bg-slate-900 text-white"
+                                    : "bg-gray-300 text-gray-800"
+                                }`}
+                              >
+                                {form.isActive ? "Enabled" : "Disabled"}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(form.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                navigate(`/admin/form/${form.formId._id}`)
+                              }
                             >
-                              Enabled
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell>7/26/2025</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="w-4 h-4 mr-2" />
-                            View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </CardContent>
               </Card>
+
+              {selectedForm && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{selectedForm.name} - Preview</CardTitle>
+                    <CardDescription>
+                      {selectedForm.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Customize as needed */}
+                    <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto">
+                      {JSON.stringify(selectedForm, null, 2)}
+                    </pre>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         </div>

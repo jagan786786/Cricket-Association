@@ -61,7 +61,7 @@ const createDefaultFormConfig = (): FormConfig => ({
   submitButton: {
     type: "primary",
     text: "Submit",
-    color: "#3b82f6", // Default color for primary
+    color: "#3b82f6",
   },
   submission: {
     callbackUrl: "",
@@ -77,7 +77,6 @@ export function FormBuilder() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Dynamic menu/instance
   const [menuItems, setMenuItems] = useState<{ id: string; name: string }[]>(
     []
   );
@@ -87,7 +86,7 @@ export function FormBuilder() {
   );
   const [selectedInstanceId, setSelectedInstanceId] = useState<string>("");
 
-  // --- Load menu items on mount ---
+  // --- Load menu items and config ---
   useEffect(() => {
     async function fetchMenuItems() {
       try {
@@ -110,39 +109,43 @@ export function FormBuilder() {
         });
       }
     }
-    // Load form config (local cache fallback)
+
     const initializeConfig = () => {
       try {
         const savedConfig = localStorage.getItem("formBuilderConfig");
         if (savedConfig) {
-          // Parse dates correctly if they were stringified
           const parsedConfig = JSON.parse(savedConfig);
-          if (parsedConfig.createdAt)
-            parsedConfig.createdAt = new Date(parsedConfig.createdAt);
-          if (parsedConfig.updatedAt)
-            parsedConfig.updatedAt = new Date(parsedConfig.updatedAt);
+          parsedConfig.createdAt = new Date(parsedConfig.createdAt);
+          parsedConfig.updatedAt = new Date(parsedConfig.updatedAt);
+
+          // ✅ ADDED: prevent loading if no valid menu/instance context
+          if (!selectedMenuItem || !selectedInstanceId) {
+            throw new Error("No context");
+          }
+
           setConfig(parsedConfig);
         } else {
-          setConfig(createDefaultFormConfig()); // Use the function to get a fresh default config
+          setConfig(createDefaultFormConfig());
         }
       } catch (error) {
         console.error("Failed to load config from localStorage:", error);
-        setConfig(createDefaultFormConfig()); // Use the function to get a fresh default config
+        localStorage.removeItem("formBuilderConfig"); // ✅ ADDED
+        setConfig(createDefaultFormConfig());
         toast({
-          title: "Error loading local config",
-          description:
-            "Could not load saved form configuration. Starting with a new form.",
-          variant: "destructive",
+          title: "Error loading saved form",
+          description: "Starting with a fresh form configuration.",
+          variant: "default",
         });
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchMenuItems();
     initializeConfig();
   }, []);
 
-  // --- Fetch instances when menu changed ---
+  // --- Fetch instances when menu changes ---
   useEffect(() => {
     if (selectedMenuItem) {
       setInstances([]);
@@ -152,16 +155,11 @@ export function FormBuilder() {
           const res = await fetch(
             `${API_BASE_URL}/instances/${selectedMenuItem}`
           );
-          if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-          }
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           const data = await res.json();
-          if (data && Array.isArray(data.instances)) {
+          if (Array.isArray(data.instances)) {
             setInstances(
-              data.instances.map((i: any) => ({
-                id: i._id,
-                name: i.name,
-              }))
+              data.instances.map((i: any) => ({ id: i._id, name: i.name }))
             );
           } else {
             setInstances([]);
@@ -184,7 +182,7 @@ export function FormBuilder() {
 
   if (isLoading || !config) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
           <p className="text-slate-600">Loading Form Builder...</p>
@@ -193,16 +191,17 @@ export function FormBuilder() {
     );
   }
 
-  // --- State updaters ---
+  // --- State Updaters ---
   const updateConfig = (updates: Partial<FormConfig>) => {
-    setConfig((prev) => {
-      if (!prev) return null; // Should not happen due to isLoading check
-      return {
-        ...prev,
-        ...updates,
-        updatedAt: new Date(),
-      };
-    });
+    setConfig((prev) =>
+      prev
+        ? {
+            ...prev,
+            ...updates,
+            updatedAt: new Date(),
+          }
+        : null
+    );
   };
   const addField = () => {
     setIsAnimating(true);
@@ -275,54 +274,42 @@ export function FormBuilder() {
       });
       return;
     }
+
     try {
-      // 1. Create each validation and form-field in backend, collect IDs
       const savedFieldIds = await Promise.all(
         config.fields.map(async (frontendField) => {
-          // Save validations
           const valIds = await Promise.all(
             (frontendField.validation || []).map(async (v) => {
               const r = await fetch(`${API_BASE_URL}/form-validation`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  rule: v.type, // <-- critical line
+                  rule: v.type,
                   value: v.value,
                   message: v.message,
                 }),
               });
-              if (!r.ok) {
-                const errorData = await r.json();
-                throw new Error(errorData?.message || "Validation save failed");
-              }
+              if (!r.ok) throw new Error("Validation save failed");
               const d = await r.json();
               return d._id;
             })
           );
 
-          // Save form-field proper
           const fieldBody: Omit<FormField, "id"> & { validation: string[] } = {
             ...frontendField,
             validation: valIds,
           };
-          // Remove builder-only field props if not in schema:
-          // 'id' is already omitted by Omit<FormField, 'id'>
-          // 'position' might also need to be adjusted if backend schema is different
           const fRes = await fetch(`${API_BASE_URL}/form-field`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(fieldBody),
           });
-          if (!fRes.ok) {
-            const errorData = await fRes.json();
-            throw new Error(errorData?.message || "Field save failed");
-          }
+          if (!fRes.ok) throw new Error("Field save failed");
           const d = await fRes.json();
           return d._id;
         })
       );
 
-      // 2. POST the actual form (send backend field ObjectIds)
       const payload = {
         name: config.name,
         description: config.description,
@@ -334,30 +321,32 @@ export function FormBuilder() {
         menuItem: selectedMenuItem,
         instanceId: selectedInstanceId,
       };
+
       const res = await fetch(`${API_BASE_URL}/form`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error?.error || "Failed to save form");
-      }
+
+      if (!res.ok) throw new Error("Failed to save form");
+
       toast({
         title: "✨ Form saved",
         description:
           "The form and its fields/validations are saved in backend.",
       });
-      localStorage.setItem("formBuilderConfig", JSON.stringify(config));
 
-      // Clear the form data from the frontend after successful save
-      setConfig(createDefaultFormConfig());
+      // ✅ ADDED — Clear form and local state
+      const newForm = createDefaultFormConfig();
+      setConfig(newForm);
       setSelectedMenuItem("");
       setSelectedInstanceId("");
+      localStorage.setItem("formBuilderConfig", JSON.stringify(newForm));
+      setActiveTab("fields"); // Optional: reset tab to fields
     } catch (err: any) {
       toast({
         title: "❌ Could not save form",
-        description: (err.message || err?.toString?.()) ?? "Unknown error",
+        description: err?.message || "Unknown error",
         variant: "destructive",
       });
     }
