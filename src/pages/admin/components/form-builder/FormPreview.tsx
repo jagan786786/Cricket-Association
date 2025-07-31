@@ -428,9 +428,9 @@ export function FormPreview({ config, mode = "preview" }: FormPreviewProps) {
                     const gridCols =
                       safeConfig.layout.columns === 3 ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2"
                     const spacing =
-                      safeConfig.layout.spacing === "lg"
+                      safeConfig.layout.spacing === "large"
                         ? "gap-8"
-                        : safeConfig.layout.spacing === "sm"
+                        : safeConfig.layout.spacing === "small"
                           ? "gap-4"
                           : "gap-6"
 

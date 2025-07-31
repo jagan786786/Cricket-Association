@@ -1,60 +1,68 @@
-export type FieldType = 
-  | 'text' 
-  | 'number' 
-  | 'email' 
-  | 'password' 
-  | 'textarea' 
-  | 'select' 
-  | 'checkbox' 
-  | 'radio' 
-  | 'date' 
-  | 'file';
+export type FieldType =
+  | "text"
+  | "textarea"
+  | "email"
+  | "number"
+  | "password"
+  | "date"
+  | "select"
+  | "checkbox"
+  | "radio";
 
-export type DataType = 'string' | 'number' | 'boolean' | 'date' | 'file';
+export type DataType = "string" | "number" | "boolean" | "date";
 
-export type ValidationRule = {
-  type: 'required' | 'minLength' | 'maxLength' | 'pattern' | 'min' | 'max' | 'email';
-  value?: string | number;
-  message?: string;
-};
+export type ValidationRuleType =
+  | "required"
+  | "email"
+  | "minLength"
+  | "maxLength"
+  | "minValue"
+  | "maxValue"
+  | "pattern"
+  | "url";
 
-export type FormField = {
-  id: string;
-  name: string;
-  label: string;
+export interface ValidationRule {
+  id: string; // Frontend only ID for list rendering
+  type: ValidationRuleType;
+  value?: string | number; // Value for rules like minLength, pattern, etc.
+  message: string; // Custom error message
+}
+
+export interface FormField {
+  id: string; // Frontend only ID for builder
+  name: string; // Unique name for the field (e.g., "firstName")
+  label: string; // Display label for the field (e.g., "First Name")
   fieldType: FieldType;
-  dataType: DataType;
+  dataType: DataType; // Expected data type for backend
   position: {
     row: number;
     column: number;
   };
-  validation: ValidationRule[];
+  validation?: ValidationRule[];
   required: boolean;
   placeholder?: string;
-  options?: string[]; // for select, radio, checkbox
-  defaultValue?: string | number | boolean;
-};
+  options?: string[]; // For select and radio types
+}
 
-export type FormLayout = {
-  columns: 2 | 3;
-  fieldsPerRow: 2 | 3;
-  spacing: 'sm' | 'md' | 'lg';
-};
+export interface FormLayout {
+  columns: 2 | 3; // Number of columns in the grid
+  fieldsPerRow: 2 | 3; // How many fields per row
+  spacing: "small" | "medium" | "large";
+}
 
-export type SubmitButton = {
-  type: 'primary' | 'secondary' | 'outline' | 'gradient';
-  color?: string;
+export interface SubmitButton {
+  type: "primary" | "secondary" | "outline" | "gradient";
   text: string;
-};
+  color?: string; // Custom color for primary/gradient types
+}
 
-export type FormSubmission = {
-  callbackUrl: string;
-  method: 'POST' | 'PUT';
-  headers?: Record<string, string>;
-};
+export interface FormSubmission {
+  callbackUrl: string; // URL to send form data
+  method: "POST" | "PUT"; // HTTP method for submission
+}
 
-export type FormConfig = {
-  id: string;
+export interface FormConfig {
+  id: string; // Unique ID for the form
   name: string;
   description?: string;
   fields: FormField[];
@@ -63,6 +71,6 @@ export type FormConfig = {
   submission: FormSubmission;
   createdAt: Date;
   updatedAt: Date;
-};
+}
 
-export type FormData = Record<string, string | number | boolean | File | Date | undefined>;
+export type FormData = Record<string, unknown>;

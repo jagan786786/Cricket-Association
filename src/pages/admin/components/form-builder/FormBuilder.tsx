@@ -7,7 +7,7 @@ import type {
   FormSubmission,
 } from "../../types/form-builder";
 import { FormFieldConfig } from "./FormFieldConfig";
-import { FormPreview } from "./FormPreview";
+import { FormPreview } from "./FormPreview"; // Assuming FormPreview is also in the same directory
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,9 +42,13 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
+// API URL -- change as needed if using a prefix like /api, /v1, etc.
+const API_BASE_URL = "http://localhost:4000/api";
+
+// Generate frontend "fake" field id, only for builder
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-const defaultFormConfig: FormConfig = {
+const createDefaultFormConfig = (): FormConfig => ({
   id: generateId(),
   name: "New Form",
   description: "",
@@ -52,11 +56,12 @@ const defaultFormConfig: FormConfig = {
   layout: {
     columns: 2,
     fieldsPerRow: 2,
-    spacing: "md",
+    spacing: "medium",
   },
   submitButton: {
     type: "primary",
     text: "Submit",
+    color: "#3b82f6", // Default color for primary
   },
   submission: {
     callbackUrl: "",
@@ -64,7 +69,7 @@ const defaultFormConfig: FormConfig = {
   },
   createdAt: new Date(),
   updatedAt: new Date(),
-};
+});
 
 export function FormBuilder() {
   const [config, setConfig] = useState<FormConfig | null>(null);
@@ -72,46 +77,110 @@ export function FormBuilder() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ✅ New state for menu + instance
+  // Dynamic menu/instance
+  const [menuItems, setMenuItems] = useState<{ id: string; name: string }[]>(
+    []
+  );
   const [selectedMenuItem, setSelectedMenuItem] = useState<string>("");
+  const [instances, setInstances] = useState<{ id: string; name: string }[]>(
+    []
+  );
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string>("");
 
-  // ✅ Menu items and instance map
-  const menuItemsOptions = [
-    { id: "menu1", name: "Menu 1" },
-    { id: "menu2", name: "Menu 2" },
-  ];
-
-  const instanceOptionsMap: Record<string, { id: string; name: string }[]> = {
-    menu1: [
-      { id: "inst1", name: "Instance A" },
-      { id: "inst2", name: "Instance B" },
-    ],
-    menu2: [
-      { id: "inst3", name: "Instance C" },
-      { id: "inst4", name: "Instance D" },
-    ],
-  };
-
+  // --- Load menu items on mount ---
   useEffect(() => {
+    async function fetchMenuItems() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/menuitems`);
+        const arr = await res.json();
+        if (Array.isArray(arr)) {
+          setMenuItems(arr.map((m: any) => ({ id: m._id, name: m.name })));
+        } else if (Array.isArray(arr.menuItems)) {
+          setMenuItems(
+            arr.menuItems.map((m: any) => ({ id: m._id, name: m.name }))
+          );
+        }
+      } catch (error) {
+        console.error("Failed to fetch menu items:", error);
+        setMenuItems([]);
+        toast({
+          title: "Error fetching menu items",
+          description: "Could not load available menu items from the backend.",
+          variant: "destructive",
+        });
+      }
+    }
+    // Load form config (local cache fallback)
     const initializeConfig = () => {
       try {
         const savedConfig = localStorage.getItem("formBuilderConfig");
         if (savedConfig) {
-          const parsed = JSON.parse(savedConfig);
-          setConfig(parsed);
+          // Parse dates correctly if they were stringified
+          const parsedConfig = JSON.parse(savedConfig);
+          if (parsedConfig.createdAt)
+            parsedConfig.createdAt = new Date(parsedConfig.createdAt);
+          if (parsedConfig.updatedAt)
+            parsedConfig.updatedAt = new Date(parsedConfig.updatedAt);
+          setConfig(parsedConfig);
         } else {
-          setConfig(defaultFormConfig);
+          setConfig(createDefaultFormConfig()); // Use the function to get a fresh default config
         }
       } catch (error) {
-        console.error("Error loading saved config:", error);
-        setConfig(defaultFormConfig);
+        console.error("Failed to load config from localStorage:", error);
+        setConfig(createDefaultFormConfig()); // Use the function to get a fresh default config
+        toast({
+          title: "Error loading local config",
+          description:
+            "Could not load saved form configuration. Starting with a new form.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     };
-
+    fetchMenuItems();
     initializeConfig();
   }, []);
+
+  // --- Fetch instances when menu changed ---
+  useEffect(() => {
+    if (selectedMenuItem) {
+      setInstances([]);
+      setSelectedInstanceId("");
+      (async () => {
+        try {
+          const res = await fetch(
+            `${API_BASE_URL}/instances/${selectedMenuItem}`
+          );
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          const data = await res.json();
+          if (data && Array.isArray(data.instances)) {
+            setInstances(
+              data.instances.map((i: any) => ({
+                id: i._id,
+                name: i.name,
+              }))
+            );
+          } else {
+            setInstances([]);
+          }
+        } catch (error) {
+          console.error("Failed to fetch instances:", error);
+          setInstances([]);
+          toast({
+            title: "Error fetching instances",
+            description: "Could not load instances for the selected menu item.",
+            variant: "destructive",
+          });
+        }
+      })();
+    } else {
+      setInstances([]);
+      setSelectedInstanceId("");
+    }
+  }, [selectedMenuItem]);
 
   if (isLoading || !config) {
     return (
@@ -124,17 +193,17 @@ export function FormBuilder() {
     );
   }
 
+  // --- State updaters ---
   const updateConfig = (updates: Partial<FormConfig>) => {
-    setConfig(
-      (prev) =>
-        ({
-          ...prev,
-          ...updates,
-          updatedAt: new Date(),
-        } as FormConfig)
-    );
+    setConfig((prev) => {
+      if (!prev) return null; // Should not happen due to isLoading check
+      return {
+        ...prev,
+        ...updates,
+        updatedAt: new Date(),
+      };
+    });
   };
-
   const addField = () => {
     setIsAnimating(true);
     const newField: FormField = {
@@ -151,7 +220,6 @@ export function FormBuilder() {
       required: false,
       placeholder: "",
     };
-
     setTimeout(() => {
       updateConfig({
         fields: [...config.fields, newField],
@@ -159,7 +227,6 @@ export function FormBuilder() {
       setIsAnimating(false);
     }, 150);
   };
-
   const updateField = (updatedField: FormField) => {
     updateConfig({
       fields: config.fields.map((field) =>
@@ -167,55 +234,139 @@ export function FormBuilder() {
       ),
     });
   };
-
   const deleteField = (fieldId: string) => {
     updateConfig({
       fields: config.fields.filter((field) => field.id !== fieldId),
     });
   };
-
   const updateLayout = (layout: Partial<FormLayout>) => {
     updateConfig({
       layout: { ...config.layout, ...layout },
     });
-
-    const updatedFields = config.fields.map((field, index) => ({
-      ...field,
-      position: {
-        row: Math.floor(
-          index / (layout.fieldsPerRow || config.layout.fieldsPerRow)
-        ),
-        column: index % (layout.fieldsPerRow || config.layout.fieldsPerRow),
-      },
-    }));
-
-    updateConfig({ fields: updatedFields });
-  };
-
-  const updateSubmitButton = (button: Partial<SubmitButton>) => {
+    // reposition fields
+    const perRow = layout.fieldsPerRow || config.layout.fieldsPerRow;
     updateConfig({
-      submitButton: { ...config.submitButton, ...button },
+      fields: config.fields.map((field, index) => ({
+        ...field,
+        position: {
+          row: Math.floor(index / perRow),
+          column: index % perRow,
+        },
+      })),
     });
   };
-
-  const updateSubmission = (submission: Partial<FormSubmission>) => {
+  const updateSubmitButton = (btn: Partial<SubmitButton>) => {
+    updateConfig({ submitButton: { ...config.submitButton, ...btn } });
+  };
+  const updateSubmission = (sub: Partial<FormSubmission>) => {
     updateConfig({
-      submission: { ...config.submission, ...submission },
+      submission: { ...config.submission, ...sub },
     });
   };
 
-  const saveForm = () => {
-    localStorage.setItem("formBuilderConfig", JSON.stringify(config));
-    toast({
-      title: "✨ Form Saved Successfully",
-      description:
-        "Your form configuration has been saved and is ready to use.",
-    });
+  // --- Main save flow (sync field/validation to backend, then form) ---
+  const saveForm = async () => {
+    if (!selectedMenuItem || !selectedInstanceId) {
+      toast({
+        title: "Choose menu item & instance",
+        description:
+          "You must select a menu item and instance to save the form.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      // 1. Create each validation and form-field in backend, collect IDs
+      const savedFieldIds = await Promise.all(
+        config.fields.map(async (frontendField) => {
+          // Save validations
+          const valIds = await Promise.all(
+            (frontendField.validation || []).map(async (v) => {
+              const r = await fetch(`${API_BASE_URL}/form-validation`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  rule: v.type, // <-- critical line
+                  value: v.value,
+                  message: v.message,
+                }),
+              });
+              if (!r.ok) {
+                const errorData = await r.json();
+                throw new Error(errorData?.message || "Validation save failed");
+              }
+              const d = await r.json();
+              return d._id;
+            })
+          );
+
+          // Save form-field proper
+          const fieldBody: Omit<FormField, "id"> & { validation: string[] } = {
+            ...frontendField,
+            validation: valIds,
+          };
+          // Remove builder-only field props if not in schema:
+          // 'id' is already omitted by Omit<FormField, 'id'>
+          // 'position' might also need to be adjusted if backend schema is different
+          const fRes = await fetch(`${API_BASE_URL}/form-field`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(fieldBody),
+          });
+          if (!fRes.ok) {
+            const errorData = await fRes.json();
+            throw new Error(errorData?.message || "Field save failed");
+          }
+          const d = await fRes.json();
+          return d._id;
+        })
+      );
+
+      // 2. POST the actual form (send backend field ObjectIds)
+      const payload = {
+        name: config.name,
+        description: config.description,
+        fields: savedFieldIds,
+        layout: config.layout,
+        submitButton: config.submitButton,
+        callbackUrl: config.submission.callbackUrl,
+        callbackMethod: config.submission.method,
+        menuItem: selectedMenuItem,
+        instanceId: selectedInstanceId,
+      };
+      const res = await fetch(`${API_BASE_URL}/form`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error?.error || "Failed to save form");
+      }
+      toast({
+        title: "✨ Form saved",
+        description:
+          "The form and its fields/validations are saved in backend.",
+      });
+      localStorage.setItem("formBuilderConfig", JSON.stringify(config));
+
+      // Clear the form data from the frontend after successful save
+      setConfig(createDefaultFormConfig());
+      setSelectedMenuItem("");
+      setSelectedInstanceId("");
+    } catch (err: any) {
+      toast({
+        title: "❌ Could not save form",
+        description: (err.message || err?.toString?.()) ?? "Unknown error",
+        variant: "destructive",
+      });
+    }
   };
 
+  // --- render ---
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 font-inter">
         <div className="container mx-auto p-6">
           {/* HEADER */}
           <div className="mb-8">
@@ -246,9 +397,8 @@ export function FormBuilder() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      variant="outline"
                       onClick={saveForm}
-                      className="bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:shadow-md transition-all duration-200"
+                      className="bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white hover:shadow-md transition-all duration-200 text-slate-700"
                     >
                       <Save className="h-4 w-4 mr-2" />
                       Save Form
@@ -263,8 +413,8 @@ export function FormBuilder() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[calc(100vh-220px)]">
-            {/* Enhanced Configuration Panel */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+            {/* Left: Configuration Panel */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden flex flex-col">
               <Tabs
                 value={activeTab}
                 onValueChange={setActiveTab}
@@ -273,28 +423,28 @@ export function FormBuilder() {
                 <TabsList className="grid w-full grid-cols-4 bg-slate-50/80 backdrop-blur-sm m-2 rounded-xl p-1">
                   <TabsTrigger
                     value="fields"
-                    className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+                    className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 text-slate-700"
                   >
                     <Plus className="h-4 w-4" />
                     <span className="hidden sm:inline">Fields</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="layout"
-                    className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+                    className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 text-slate-700"
                   >
                     <Layers className="h-4 w-4" />
                     <span className="hidden sm:inline">Layout</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="style"
-                    className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+                    className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 text-slate-700"
                   >
                     <Palette className="h-4 w-4" />
                     <span className="hidden sm:inline">Style</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="config"
-                    className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+                    className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200 text-slate-700"
                   >
                     <Settings className="h-4 w-4" />
                     <span className="hidden sm:inline">Config</span>
@@ -315,13 +465,12 @@ export function FormBuilder() {
                       <Button
                         onClick={addField}
                         disabled={isAnimating}
-                        className="bg-green-600 shadow-lg hover:shadow-xl transition-all duration-200"
+                        className="bg-green-600 shadow-lg hover:shadow-xl transition-all duration-200 text-white"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Field
                       </Button>
                     </div>
-
                     <div className="space-y-4">
                       {config.fields.length === 0 ? (
                         <Card className="p-12 text-center bg-gradient-to-br from-slate-50 to-blue-50/30 border-dashed border-2 border-slate-200 hover:border-blue-300 transition-colors duration-200">
@@ -339,7 +488,7 @@ export function FormBuilder() {
                               </p>
                               <Button
                                 onClick={addField}
-                                className="bg-green-600 hover:bg-green-700 text-white shadow-lg transition-all duration-200 "
+                                className="bg-green-600 hover:bg-green-700 text-white shadow-lg transition-all duration-200"
                               >
                                 <Zap className="h-4 w-4 mr-2" />
                                 Add Your First Field
@@ -376,7 +525,6 @@ export function FormBuilder() {
                         Configure how your form is displayed
                       </p>
                     </div>
-
                     <Card className="bg-gradient-to-br from-white to-slate-50/50 border-0 shadow-lg">
                       <CardContent className="p-6 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -392,7 +540,7 @@ export function FormBuilder() {
                                 })
                               }
                             >
-                              <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
+                              <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -401,7 +549,6 @@ export function FormBuilder() {
                               </SelectContent>
                             </Select>
                           </div>
-
                           <div className="space-y-3">
                             <Label className="text-sm font-medium text-slate-700">
                               Fields Per Row
@@ -414,7 +561,7 @@ export function FormBuilder() {
                                 })
                               }
                             >
-                              <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
+                              <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -424,24 +571,23 @@ export function FormBuilder() {
                             </Select>
                           </div>
                         </div>
-
                         <div className="space-y-3">
                           <Label className="text-sm font-medium text-slate-700">
                             Spacing
                           </Label>
                           <Select
                             value={config.layout.spacing}
-                            onValueChange={(value: "sm" | "md" | "lg") =>
-                              updateLayout({ spacing: value })
-                            }
+                            onValueChange={(
+                              value: "small" | "medium" | "large"
+                            ) => updateLayout({ spacing: value })}
                           >
-                            <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
+                            <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="sm">Compact</SelectItem>
-                              <SelectItem value="md">Comfortable</SelectItem>
-                              <SelectItem value="lg">Spacious</SelectItem>
+                              <SelectItem value="small">small</SelectItem>
+                              <SelectItem value="medium">medium</SelectItem>
+                              <SelectItem value="large">large</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -458,7 +604,6 @@ export function FormBuilder() {
                         Customize your form's submit button
                       </p>
                     </div>
-
                     <Card className="bg-gradient-to-br from-white to-slate-50/50 border-0 shadow-lg">
                       <CardContent className="p-6 space-y-6">
                         <div className="space-y-3">
@@ -471,10 +616,9 @@ export function FormBuilder() {
                               updateSubmitButton({ text: e.target.value })
                             }
                             placeholder="Submit"
-                            className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
+                            className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700"
                           />
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="space-y-3">
                             <Label className="text-sm font-medium text-slate-700">
@@ -486,7 +630,7 @@ export function FormBuilder() {
                                 updateSubmitButton({ type: value })
                               }
                             >
-                              <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
+                              <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -501,7 +645,6 @@ export function FormBuilder() {
                               </SelectContent>
                             </Select>
                           </div>
-
                           <div className="space-y-3">
                             <Label className="text-sm font-medium text-slate-700">
                               Custom Color
@@ -521,7 +664,7 @@ export function FormBuilder() {
                                   updateSubmitButton({ color: e.target.value })
                                 }
                                 placeholder="#3b82f6"
-                                className="flex-1 bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
+                                className="flex-1 bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700"
                               />
                             </div>
                           </div>
@@ -539,7 +682,6 @@ export function FormBuilder() {
                         Set up form details and submission settings
                       </p>
                     </div>
-
                     <Card className="bg-gradient-to-br from-white to-slate-50/50 border-0 shadow-lg">
                       <CardContent className="p-6 space-y-6">
                         <div className="space-y-3">
@@ -552,10 +694,9 @@ export function FormBuilder() {
                               updateConfig({ name: e.target.value })
                             }
                             placeholder="My Awesome Form"
-                            className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
+                            className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700"
                           />
                         </div>
-
                         <div className="space-y-3">
                           <Label className="text-sm font-medium text-slate-700">
                             Description
@@ -566,25 +707,23 @@ export function FormBuilder() {
                               updateConfig({ description: e.target.value })
                             }
                             placeholder="Describe what this form is for..."
-                            className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 min-h-[100px]"
+                            className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 min-h-[100px] text-slate-700"
                           />
                         </div>
-
-                        {/* --- Custom: Menu Item Dropdown --- */}
+                        {/* Dynamic Menu dropdown */}
                         <div className="space-y-3">
                           <Label className="text-sm font-medium text-slate-700">
                             Menu Item
                           </Label>
                           <Select
-                            onValueChange={(value) =>
-                              setSelectedMenuItem(value)
-                            }
+                            value={selectedMenuItem}
+                            onValueChange={(val) => setSelectedMenuItem(val)}
                           >
-                            <SelectTrigger className="bg-white border-slate-200">
+                            <SelectTrigger className="bg-white border-slate-200 text-slate-700">
                               <SelectValue placeholder="Select a menu item" />
                             </SelectTrigger>
                             <SelectContent>
-                              {menuItemsOptions.map((item) => (
+                              {menuItems.map((item) => (
                                 <SelectItem key={item.id} value={item.id}>
                                   {item.name}
                                 </SelectItem>
@@ -592,33 +731,38 @@ export function FormBuilder() {
                             </SelectContent>
                           </Select>
                         </div>
-
-                        {/* --- Custom: Instance Dropdown --- */}
+                        {/* Dynamic Instance dropdown */}
                         <div className="space-y-3">
                           <Label className="text-sm font-medium text-slate-700">
                             Instance
                           </Label>
-                          <Select disabled={!selectedMenuItem}>
-                            <SelectTrigger className="bg-white border-slate-200">
+                          <Select
+                            value={selectedInstanceId}
+                            onValueChange={(val) => setSelectedInstanceId(val)}
+                            disabled={!selectedMenuItem}
+                          >
+                            <SelectTrigger className="bg-white border-slate-200 text-slate-700">
                               <SelectValue placeholder="Select an instance" />
                             </SelectTrigger>
                             <SelectContent>
-                              {(instanceOptionsMap[selectedMenuItem] || []).map(
-                                (instance) => (
-                                  <SelectItem
-                                    key={instance.id}
-                                    value={instance.id}
-                                  >
-                                    {instance.name}
+                              {instances.length > 0 ? (
+                                instances.map((ins) => (
+                                  <SelectItem key={ins.id} value={ins.id}>
+                                    {ins.name}
                                   </SelectItem>
-                                )
+                                ))
+                              ) : (
+                                // Radix requires SelectItem to have value!=empty, so message must not be a SelectItem
+                                <div className="px-3 py-2 text-slate-500 text-sm select-none">
+                                  {selectedMenuItem
+                                    ? "No instance found"
+                                    : "Select a menu item first"}
+                                </div>
                               )}
                             </SelectContent>
                           </Select>
                         </div>
-
                         <Separator className="bg-slate-200" />
-
                         <div className="space-y-6">
                           <div className="flex items-center gap-2">
                             <h4 className="text-sm font-medium text-slate-700">
@@ -633,7 +777,6 @@ export function FormBuilder() {
                               </TooltipContent>
                             </Tooltip>
                           </div>
-
                           <div className="space-y-3">
                             <Label className="text-sm font-medium text-slate-700">
                               Callback URL
@@ -646,10 +789,9 @@ export function FormBuilder() {
                                 })
                               }
                               placeholder="https://api.example.com/submit"
-                              className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20"
+                              className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700"
                             />
                           </div>
-
                           <div className="space-y-3">
                             <Label className="text-sm font-medium text-slate-700">
                               HTTP Method
@@ -660,7 +802,7 @@ export function FormBuilder() {
                                 updateSubmission({ method: value })
                               }
                             >
-                              <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20">
+                              <SelectTrigger className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -676,8 +818,7 @@ export function FormBuilder() {
                 </div>
               </Tabs>
             </div>
-
-            {/* Enhanced Preview Panel */}
+            {/* Right: Preview */}
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
               <div className="p-6 border-b bg-gradient-to-r from-slate-50/80 to-blue-50/30 backdrop-blur-sm">
                 <div className="flex items-center gap-3">
