@@ -44,7 +44,6 @@ interface Tournament {
   highlights?: string;
 }
 
-// const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 const API_BASE = "https://cricket-association-backend.onrender.com/api"; // <-- update if using env vars
 
 const Tournaments = () => {

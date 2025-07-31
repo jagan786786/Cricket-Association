@@ -38,7 +38,7 @@ export function AdminSidebar() {
   useEffect(() => {
     async function fetchMenuItems() {
       try {
-        const res = await fetch("http://localhost:4000/api/menuitems");
+        const res = await fetch("https://cricket-association-backend.onrender.com/api/menuitems");
         const data = await res.json();
 
         const mapped: MenuItem[] = data.menuItems.map(
