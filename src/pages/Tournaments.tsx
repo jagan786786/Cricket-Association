@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import { useNavigate } from "react-router-dom";
 
 // Types
 interface Category {
@@ -48,6 +49,7 @@ const API_BASE = "https://cricket-association-backend.onrender.com/api"; // <-- 
 
 const Tournaments = () => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<string>("");
   const [menuItemId, setMenuItemId] = useState<string>("");
   const [categoryTournaments, setCategoryTournaments] = useState<{
@@ -212,7 +214,14 @@ const Tournaments = () => {
                   </span>
                 </div>
               </div>
-              <Button className="w-full btn-hero">Register</Button>
+              <Button
+                className="w-full btn-hero"
+                onClick={() =>
+                  navigate(`/register/Tournaments/${tournament._id}`)
+                }
+              >
+                Register
+              </Button>
             </CardContent>
           </Card>
         ))}

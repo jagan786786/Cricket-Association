@@ -31,7 +31,6 @@ export default function FormPreview() {
         const res = await axios.get(
           `https://cricket-association-backend.onrender.com/api/form/${id}`
         );
-        console.log(res.data);
         setForm(res.data);
       } catch (err) {
         console.error("Failed to fetch form:", err);
@@ -43,15 +42,23 @@ export default function FormPreview() {
     fetchForm();
   }, [id]);
 
-  if (loading) return <p className="p-4">Loading form...</p>;
-  if (!form) return <p className="p-4">Form not found.</p>;
+  if (loading)
+    return (
+      <p className="p-6 text-lg font-medium text-center">Loading form...</p>
+    );
 
-  // Layout settings
+  if (!form)
+    return (
+      <p className="p-6 text-lg font-medium text-center text-red-500">
+        Form not found.
+      </p>
+    );
+
   const columns = form.layout?.columns || 2;
   const spacingMap = {
-    small: "gap-2",
-    medium: "gap-4",
-    large: "gap-6",
+    small: "gap-3",
+    medium: "gap-5",
+    large: "gap-8",
   };
   const spacing = spacingMap[form.layout?.spacing || "medium"];
 
@@ -61,7 +68,9 @@ export default function FormPreview() {
       field.position?.column || 1
     }`;
     const spanClass =
-      field.fieldType === "textarea" ? `col-span-${columns}` : "col-span-1";
+      field.fieldType === "textarea" || field.fullWidth
+        ? `col-span-${columns}`
+        : "col-span-1";
 
     switch (field.fieldType) {
       case "text":
@@ -70,28 +79,41 @@ export default function FormPreview() {
       case "date":
       case "time":
         return (
-          <div key={key} className={`${spanClass} ${positionStyle} space-y-1`}>
-            <Label>{field.label}</Label>
+          <div
+            key={key}
+            className={`${spanClass} ${positionStyle} flex flex-col space-y-2`}
+          >
+            <Label className="text-sm font-medium">{field.label}</Label>
             <Input
               type={field.fieldType}
               placeholder={field.placeholder}
               defaultValue={field.defaultValue}
+              className="w-full"
             />
           </div>
         );
       case "textarea":
         return (
-          <div key={key} className={`${spanClass} ${positionStyle} space-y-1`}>
-            <Label>{field.label}</Label>
-            <Textarea placeholder={field.placeholder} />
+          <div
+            key={key}
+            className={`${spanClass} ${positionStyle} flex flex-col space-y-2`}
+          >
+            <Label className="text-sm font-medium">{field.label}</Label>
+            <Textarea
+              placeholder={field.placeholder}
+              className="min-h-[120px] w-full"
+            />
           </div>
         );
       case "select":
         return (
-          <div key={key} className={`col-span-1 ${positionStyle} space-y-1`}>
-            <Label>{field.label}</Label>
+          <div
+            key={key}
+            className={`col-span-1 ${positionStyle} flex flex-col space-y-2`}
+          >
+            <Label className="text-sm font-medium">{field.label}</Label>
             <Select>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder={field.placeholder} />
               </SelectTrigger>
               <SelectContent>
@@ -108,10 +130,12 @@ export default function FormPreview() {
         return (
           <div
             key={key}
-            className={`col-span-1 ${positionStyle} flex items-center space-x-2`}
+            className={`col-span-${columns} ${positionStyle} flex items-center space-x-3`}
           >
             <Checkbox id={field.name} />
-            <Label htmlFor={field.name}>{field.label}</Label>
+            <Label htmlFor={field.name} className="text-sm font-medium">
+              {field.label}
+            </Label>
           </div>
         );
       default:
@@ -120,7 +144,7 @@ export default function FormPreview() {
   };
 
   const getButtonClass = () => {
-    const base = "px-6 py-2 rounded font-medium";
+    const base = "px-6 py-2 rounded-xl font-semibold transition duration-200";
     const btn = form.submitButton || {};
 
     switch (btn.type) {
@@ -128,11 +152,11 @@ export default function FormPreview() {
       case "secondary":
         return `${base} text-white hover:opacity-90`;
       case "outline":
-        return `${base} bg-transparent`;
+        return `${base} bg-transparent border hover:bg-gray-100`;
       case "gradient":
-        return `${base} text-white bg-gradient-to-r from-indigo-500 to-purple-600`;
+        return `${base} text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:brightness-110`;
       default:
-        return `${base} text-white bg-blue-600`;
+        return `${base} text-white bg-blue-600 hover:bg-blue-700`;
     }
   };
 
@@ -159,21 +183,23 @@ export default function FormPreview() {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>{form.name}</CardTitle>
-          <CardDescription>{form.description}</CardDescription>
+    <div className="p-6 md:p-10 max-w-6xl mx-auto">
+      <Card className="shadow-xl border border-gray-200">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-2xl font-bold">{form.name}</CardTitle>
+          <CardDescription className="text-gray-500">
+            {form.description}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form
-            className={`grid grid-cols-${columns} ${spacing}`}
+            className={`grid grid-cols-1 md:grid-cols-${columns} ${spacing}`}
             style={{ gridAutoRows: "minmax(min-content, max-content)" }}
           >
             {form.fields?.map((field) => renderField(field))}
           </form>
 
-          <div className="mt-6 text-right">
+          <div className="mt-8 text-right">
             <button
               type="submit"
               className={getButtonClass()}

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import { useNavigate } from "react-router-dom";
 
 const iconMap = {
   trophy: Award,
@@ -29,6 +30,7 @@ const iconMap = {
 
 const Services = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const menuItemId = location.state?.menuItemId || null;
 
   const [categories, setCategories] = useState([]);
@@ -73,7 +75,9 @@ const Services = () => {
         }));
 
         const modulePromises = limitedCategories.map((cat) =>
-          axios.get(`https://cricket-association-backend.onrender.com/api/modules/category/${cat._id}`)
+          axios.get(
+            `https://cricket-association-backend.onrender.com/api/modules/category/${cat._id}`
+          )
         );
 
         const moduleResponses = await Promise.all(modulePromises);
@@ -126,7 +130,10 @@ const Services = () => {
     };
 
     try {
-      const res = await axios.post("https://cricket-association-backend.onrender.com/api/module", payload);
+      const res = await axios.post(
+        "https://cricket-association-backend.onrender.com/api/module",
+        payload
+      );
       setFormMessage("Module created successfully!");
 
       const updated = await axios.get(
@@ -288,6 +295,9 @@ const Services = () => {
                               className="w-full"
                               variant={
                                 service.isPopular ? "default" : "outline"
+                              }
+                              onClick={() =>
+                                navigate(`/register/Services/${service._id}`)
                               }
                             >
                               {service.isPopular ? "Choose Plan" : "Learn More"}
