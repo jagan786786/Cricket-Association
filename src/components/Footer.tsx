@@ -57,7 +57,7 @@ const Footer = () => {
                   key={index}
                   variant="outline"
                   size="sm"
-                  className="w-10 h-10 p-0 border-primary-foreground/20 text-primary-foreground hover:bg-accent hover:text-accent-foreground hover:border-accent"
+                  
                 >
                   <social.icon className="w-4 h-4" />
                   <span className="sr-only">{social.label}</span>
@@ -107,7 +107,7 @@ const Footer = () => {
                 <div className="text-sm text-primary-foreground/80">
                   <p>Cricket Association Ground,</p>
                   <p>Sector 15, Sports Complex,</p>
-                  <p>City Name - 123456</p>
+                  <p>City Name - Hyderabad</p>
                 </div>
               </div>
               

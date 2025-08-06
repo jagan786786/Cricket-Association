@@ -127,20 +127,28 @@ const RegisterForm = () => {
       return;
     }
 
-    if (!form?.callbackUrl) {
-      alert("No callback URL defined");
-      return;
-    }
-
     setSubmitting(true);
     try {
-      await axios({
-        method: form.callbackMethod || "POST",
-        url: form.callbackUrl,
-        data: formData,
-      });
+      const { data } = await axios.post(
+        `http://localhost:4000/api/submission/${form._id}`,
+        formData
+      );
+
       setSubmitSuccess(true);
-      setTimeout(() => setSubmitSuccess(false), 3000);
+      setMessage(data.message || "Form submitted successfully!");
+
+      setTimeout(() => {
+        setSubmitSuccess(false);
+        setMessage("");
+      }, 3000);
+
+      // Optionally reset the form
+      const resetData = {};
+      form.fields.forEach((field) => {
+        resetData[field.name] =
+          field.defaultValue || (field.fieldType === "checkbox" ? false : "");
+      });
+      setFormData(resetData);
     } catch (err) {
       console.error("Form submit error", err);
       alert("Submission failed. Please try again.");
@@ -184,9 +192,7 @@ const RegisterForm = () => {
               <AlertCircle className="w-10 h-10 text-white" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-2xl font-bold text-gray-800">
-                Form Not Available
-              </h3>
+              
               <p className="text-gray-600 leading-relaxed">{message}</p>
             </div>
           </div>

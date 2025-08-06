@@ -7,6 +7,7 @@ import AdminTournaments from "@/pages/admin/pages/AdminTournaments";
 import FormList from "@/pages/admin/pages/FormList";
 import FormPreview from "@/pages/admin/pages/AdminFormPreview";
 import { Route } from "react-router-dom";
+import AdminMemberships from "@/pages/admin/pages/AdminMemberships";
 
 const adminRoutes = (
   <>
@@ -14,6 +15,7 @@ const adminRoutes = (
       <Route index element={<AdminDashboard />} />
       <Route path="services" element={<AdminServices />} />
       <Route path="tournaments" element={<AdminTournaments />} />
+      <Route path="membership" element={<AdminMemberships/>} />
       <Route path="createform" element={<AdminFormBuilder />} />
       <Route path="forms" element={<FormList />} />
       <Route path="form/:id" element={<FormPreview />} />
