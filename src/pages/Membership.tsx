@@ -42,7 +42,9 @@ const Membership = () => {
   useEffect(() => {
     const fetchMemberships = async () => {
       try {
-        const response = await axios.get("http://localhost:4000/api/memberships"); // Replace with your full API URL if needed
+        const response = await axios.get(
+          "http://localhost:4000/api/memberships"
+        ); // Replace with your full API URL if needed
         const data = response.data.memberships;
 
         // Optional: Add icon and color mapping based on name or popularity

@@ -43,7 +43,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 
 // API URL -- change as needed if using a prefix like /api, /v1, etc.
-const API_BASE_URL = "https://cricket-association-backend.onrender.com/api";
+const API_BASE_URL = "http://localhost:4000/api";
 
 // Generate frontend "fake" field id, only for builder
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -71,7 +71,7 @@ const createDefaultFormConfig = (): FormConfig => ({
   updatedAt: new Date(),
 });
 
-export function FormBuilder() {
+export function  FormBuilder() {
   const [config, setConfig] = useState<FormConfig | null>(null);
   const [activeTab, setActiveTab] = useState("fields");
   const [isAnimating, setIsAnimating] = useState(false);
@@ -92,11 +92,12 @@ export function FormBuilder() {
       try {
         const res = await fetch(`${API_BASE_URL}/menuitems`);
         const arr = await res.json();
+        type MenuItemApi = { _id: string; name: string };
         if (Array.isArray(arr)) {
-          setMenuItems(arr.map((m: any) => ({ id: m._id, name: m.name })));
+          setMenuItems(arr.map((m: MenuItemApi) => ({ id: m._id, name: m.name })));
         } else if (Array.isArray(arr.menuItems)) {
           setMenuItems(
-            arr.menuItems.map((m: any) => ({ id: m._id, name: m.name }))
+            arr.menuItems.map((m: MenuItemApi) => ({ id: m._id, name: m.name }))
           );
         }
       } catch (error) {
@@ -157,9 +158,10 @@ export function FormBuilder() {
           );
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           const data = await res.json();
+          type InstanceApi = { _id: string; name: string };
           if (Array.isArray(data.instances)) {
             setInstances(
-              data.instances.map((i: any) => ({ id: i._id, name: i.name }))
+              data.instances.map((i: InstanceApi) => ({ id: i._id, name: i.name }))
             );
           } else {
             setInstances([]);
@@ -343,10 +345,14 @@ export function FormBuilder() {
       setSelectedInstanceId("");
       localStorage.setItem("formBuilderConfig", JSON.stringify(newForm));
       setActiveTab("fields"); // Optional: reset tab to fields
-    } catch (err: any) {
+    } catch (err: unknown) {
+      let errorMessage = "Unknown error";
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      }
       toast({
         title: "❌ Could not save form",
-        description: err?.message || "Unknown error",
+        description: errorMessage,
         variant: "destructive",
       });
     }

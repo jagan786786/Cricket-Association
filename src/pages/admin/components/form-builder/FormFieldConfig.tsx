@@ -1,20 +1,19 @@
-import { useState } from "react";
-import {
-  FormField,
-  ValidationRule,
-  FieldType,
-  DataType,
-} from "../../types/form-builder";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardHeader,
   CardContent,
   CardFooter,
+  CardHeader,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,25 +21,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  Trash2,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Check,
   ChevronDown,
   ChevronUp,
-  Plus,
   Info,
-  Check,
-  X,
+  Plus,
+  Trash2,
 } from "lucide-react";
+import { useState } from "react";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-
+  DataType,
+  FieldType,
+  FormField,
+  ValidationRule,
+} from "../../types/form-builder";
 
 interface FormFieldConfigProps {
   field: FormField;
@@ -48,9 +50,7 @@ interface FormFieldConfigProps {
   onDelete: (fieldId: string) => void;
 }
 
-
 const generateValidationId = () => Math.random().toString(36).substr(2, 9);
-
 
 export function FormFieldConfig({
   field,
@@ -59,14 +59,12 @@ export function FormFieldConfig({
 }: FormFieldConfigProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-
   const updateFieldProperty = <K extends keyof FormField>(
     key: K,
     value: FormField[K]
   ) => {
     onUpdate({ ...field, [key]: value });
   };
-
 
   const addValidationRule = () => {
     const newRule: ValidationRule = {
@@ -75,12 +73,8 @@ export function FormFieldConfig({
       value: "",
       message: "This field is required.",
     };
-    updateFieldProperty(
-      "validation",
-      [...(field.validation || []), newRule]
-    );
+    updateFieldProperty("validation", [...(field.validation || []), newRule]);
   };
-
 
   const updateValidationRule = (
     ruleId: string,
@@ -94,14 +88,12 @@ export function FormFieldConfig({
     );
   };
 
-
   const deleteValidationRule = (ruleId: string) => {
     updateFieldProperty(
       "validation",
       (field.validation || []).filter((rule) => rule.id !== ruleId)
     );
   };
-
 
   const getValidationRuleValueType = (ruleType: string) => {
     switch (ruleType) {
@@ -116,10 +108,9 @@ export function FormFieldConfig({
       case "url":
       case "required":
       default:
-        return "none"; // No value needed or handled by checkbox
+        return "none";
     }
   };
-
 
   return (
     <Card className="bg-white border-slate-200 shadow-md hover:shadow-lg transition-all duration-200">
@@ -166,7 +157,10 @@ export function FormFieldConfig({
           <CardContent className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
-                <Label htmlFor={`label-${field.id}`} className="text-sm font-medium text-slate-700">
+                <Label
+                  htmlFor={`label-${field.id}`}
+                  className="text-sm font-medium text-slate-700"
+                >
                   Label
                 </Label>
                 <Input
@@ -178,14 +172,20 @@ export function FormFieldConfig({
                 />
               </div>
               <div className="space-y-3">
-                <Label htmlFor={`name-${field.id}`} className="text-sm font-medium text-slate-700">
+                <Label
+                  htmlFor={`name-${field.id}`}
+                  className="text-sm font-medium text-slate-700"
+                >
                   Name (for backend)
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Info className="h-3 w-3 ml-1 inline-block text-slate-400" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Unique identifier for backend processing (e.g., 'firstName')</p>
+                      <p>
+                        Unique identifier for backend processing (e.g.,
+                        'firstName')
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </Label>
@@ -199,10 +199,12 @@ export function FormFieldConfig({
               </div>
             </div>
 
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
-                <Label htmlFor={`fieldType-${field.id}`} className="text-sm font-medium text-slate-700">
+                <Label
+                  htmlFor={`fieldType-${field.id}`}
+                  className="text-sm font-medium text-slate-700"
+                >
                   Field Type
                 </Label>
                 <Select
@@ -211,7 +213,10 @@ export function FormFieldConfig({
                     updateFieldProperty("fieldType", value)
                   }
                 >
-                  <SelectTrigger id={`fieldType-${field.id}`} className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700">
+                  <SelectTrigger
+                    id={`fieldType-${field.id}`}
+                    className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700"
+                  >
                     <SelectValue placeholder="Select field type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -221,6 +226,7 @@ export function FormFieldConfig({
                     <SelectItem value="number">Number Input</SelectItem>
                     <SelectItem value="password">Password Input</SelectItem>
                     <SelectItem value="date">Date Input</SelectItem>
+                    <SelectItem value="file">File Input</SelectItem>
                     <SelectItem value="select">Dropdown (Select)</SelectItem>
                     <SelectItem value="checkbox">Checkbox</SelectItem>
                     <SelectItem value="radio">Radio Buttons</SelectItem>
@@ -228,7 +234,10 @@ export function FormFieldConfig({
                 </Select>
               </div>
               <div className="space-y-3">
-                <Label htmlFor={`dataType-${field.id}`} className="text-sm font-medium text-slate-700">
+                <Label
+                  htmlFor={`dataType-${field.id}`}
+                  className="text-sm font-medium text-slate-700"
+                >
                   Data Type
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -242,10 +251,13 @@ export function FormFieldConfig({
                 <Select
                   value={field.dataType}
                   onValueChange={(value: DataType) =>
-                    updateFity("dataType", value)
+                    updateFieldProperty("dataType", value)
                   }
                 >
-                  <SelectTrigger id={`dataType-${field.id}`} className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700">
+                  <SelectTrigger
+                    id={`dataType-${field.id}`}
+                    className="bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 text-slate-700"
+                  >
                     <SelectValue placeholder="Select data type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -259,9 +271,11 @@ export function FormFieldConfig({
               </div>
             </div>
 
-
             <div className="space-y-3">
-              <Label htmlFor={`placeholder-${field.id}`} className="text-sm font-medium text-slate-700">
+              <Label
+                htmlFor={`placeholder-${field.id}`}
+                className="text-sm font-medium text-slate-700"
+              >
                 Placeholder
               </Label>
               <Input
@@ -275,17 +289,22 @@ export function FormFieldConfig({
               />
             </div>
 
-
             {field.fieldType === "select" && (
               <div className="space-y-3">
-                <Label htmlFor={`options-${field.id}`} className="text-sm font-medium text-slate-700">
+                <Label
+                  htmlFor={`options-${field.id}`}
+                  className="text-sm font-medium text-slate-700"
+                >
                   Options (comma-separated)
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Info className="h-3 w-3 ml-1 inline-block text-slate-400" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Enter options for dropdown/radio, e.g., Option 1, Option 2</p>
+                      <p>
+                        Enter options for dropdown/radio, e.g., Option 1, Option
+                        2
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </Label>
@@ -304,7 +323,6 @@ export function FormFieldConfig({
               </div>
             )}
 
-
             <div className="flex items-center space-x-2">
               <Checkbox
                 id={`required-${field.id}`}
@@ -314,14 +332,15 @@ export function FormFieldConfig({
                 }
                 className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
               />
-              <Label htmlFor={`required-${field.id}`} className="text-sm font-medium text-slate-700">
+              <Label
+                htmlFor={`required-${field.id}`}
+                className="text-sm font-medium text-slate-700"
+              >
                 Required Field
               </Label>
             </div>
 
-
             <Separator className="bg-slate-200" />
-
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -353,20 +372,38 @@ export function FormFieldConfig({
                             <Select
                               value={rule.type}
                               onValueChange={(value: ValidationRule["type"]) =>
-                                updateValidationRule(rule.id, { type: value, value: "", message: "" }) 
+                                updateValidationRule(rule.id, {
+                                  type: value,
+                                  value: "",
+                                  message: "",
+                                })
                               }
                             >
                               <SelectTrigger className="bg-white border-slate-200 text-slate-700">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="required">Required</SelectItem>
-                                <SelectItem value="email">Email Format</SelectItem>
-                                <SelectItem value="minLength">Min Length</SelectItem>
-                                <SelectItem value="maxLength">Max Length</SelectItem>
-                                <SelectItem value="minValue">Min Value</SelectItem>
-                                <SelectItem value="maxValue">Max Value</SelectItem>
-                                <SelectItem value="pattern">Regex Pattern</SelectItem>
+                                <SelectItem value="required">
+                                  Required
+                                </SelectItem>
+                                <SelectItem value="email">
+                                  Email Format
+                                </SelectItem>
+                                <SelectItem value="minLength">
+                                  Min Length
+                                </SelectItem>
+                                <SelectItem value="maxLength">
+                                  Max Length
+                                </SelectItem>
+                                <SelectItem value="minValue">
+                                  Min Value
+                                </SelectItem>
+                                <SelectItem value="maxValue">
+                                  Max Value
+                                </SelectItem>
+                                <SelectItem value="pattern">
+                                  Regex Pattern
+                                </SelectItem>
                                 <SelectItem value="url">URL Format</SelectItem>
                               </SelectContent>
                             </Select>
@@ -393,7 +430,12 @@ export function FormFieldConfig({
                               Rule Value
                             </Label>
                             <Input
-                              type={getValidationRuleValueType(rule.type) === "number" ? "number" : "text"}
+                              type={
+                                getValidationRuleValueType(rule.type) ===
+                                "number"
+                                  ? "number"
+                                  : "text"
+                              }
                               value={rule.value || ""}
                               onChange={(e) =>
                                 updateValidationRule(rule.id, {
@@ -401,7 +443,8 @@ export function FormFieldConfig({
                                 })
                               }
                               placeholder={
-                                getValidationRuleValueType(rule.type) === "number"
+                                getValidationRuleValueType(rule.type) ===
+                                "number"
                                   ? "e.g., 5"
                                   : "e.g., ^\\d{3}-\\d{2}-\\d{4}$"
                               }
@@ -445,4 +488,3 @@ export function FormFieldConfig({
     </Card>
   );
 }
-

@@ -8,6 +8,8 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Loader2, CheckCircle, AlertCircle, FileText } from "lucide-react";
 import clsx from "clsx";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const API_BASE = "https://cricket-association-backend.onrender.com/api";
 
@@ -30,7 +32,7 @@ const RegisterForm = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
-  const [submitSuccess, setSubmitSuccess] = useState(false);
+  // const [submitSuccess, setSubmitSuccess] = useState(false);
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
@@ -67,11 +69,15 @@ const RegisterForm = () => {
 
         const initialData = {};
         fullForm.fields.forEach((field) => {
-          initialData[field.name] =
-            field.defaultValue || (field.fieldType === "checkbox" ? false : "");
+          if (field.fieldType === "file") {
+            initialData[field.name] = field.multiple ? [] : null;
+          } else {
+            initialData[field.name] =
+              field.defaultValue ||
+              (field.fieldType === "checkbox" ? false : "");
+          }
         });
         setFormData(initialData);
-
         setLoading(false);
       } catch (err) {
         console.error("Form load error", err);
@@ -100,11 +106,16 @@ const RegisterForm = () => {
 
   const handleChange = (e, field) => {
     const value =
-      field.fieldType === "checkbox" ? e.target.checked : e.target.value;
+      field.fieldType === "checkbox"
+        ? e.target.checked
+        : field.fieldType === "file"
+        ? field.multiple
+          ? Array.from(e.target.files)
+          : e.target.files[0]
+        : e.target.value;
 
     setFormData((prev) => ({ ...prev, [field.name]: value }));
 
-    // Clear error when user starts typing
     if (errors[field.name]) {
       setErrors((prev) => ({ ...prev, [field.name]: null }));
     }
@@ -113,7 +124,6 @@ const RegisterForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate all fields
     const newErrors = {};
     form.fields.forEach((field) => {
       const error = validateField(field, formData[field.name]);
@@ -128,30 +138,62 @@ const RegisterForm = () => {
     }
 
     setSubmitting(true);
+
     try {
+      const submissionData = new FormData();
+      const payload = {};
+
+      for (const field of form.fields) {
+        const value = formData[field.name];
+
+        if (field.fieldType === "file") {
+          if (field.multiple && Array.isArray(value)) {
+            value.forEach((file) => {
+              submissionData.append(field.name, file);
+            });
+          } else if (value) {
+            submissionData.append(field.name, value);
+          }
+        } else {
+          payload[field.name] = value;
+        }
+      }
+
+      // Append non-file fields as a single JSON object under `data`
+      submissionData.append("data", JSON.stringify(payload));
+
       const { data } = await axios.post(
         `http://localhost:4000/api/submission/${form._id}`,
-        formData
+        submissionData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
+      toast.success(data.message || "Form submitted successfully!");
 
-      setSubmitSuccess(true);
-      setMessage(data.message || "Form submitted successfully!");
+      // setSubmitSuccess(true);
+      // setMessage(data.message || "Form submitted successfully!");
 
-      setTimeout(() => {
-        setSubmitSuccess(false);
-        setMessage("");
-      }, 3000);
+      // setTimeout(() => {
+      //   setSubmitSuccess(false);
+      //   setMessage("");
+      // }, 3000);
 
-      // Optionally reset the form
       const resetData = {};
       form.fields.forEach((field) => {
-        resetData[field.name] =
-          field.defaultValue || (field.fieldType === "checkbox" ? false : "");
+        if (field.fieldType === "file") {
+          resetData[field.name] = field.multiple ? [] : null;
+        } else {
+          resetData[field.name] =
+            field.defaultValue || (field.fieldType === "checkbox" ? false : "");
+        }
       });
       setFormData(resetData);
     } catch (err) {
       console.error("Form submit error", err);
-      alert("Submission failed. Please try again.");
+      toast.error("Submission failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -161,6 +203,7 @@ const RegisterForm = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <Navigation />
+        
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center space-y-4">
             <div className="relative">
@@ -177,12 +220,13 @@ const RegisterForm = () => {
             </p>
           </div>
         </div>
+        <ToastContainer position="top-right" autoClose={3000} />
         <Footer />
       </div>
     );
   }
 
-  if (message) {
+  if (message && !form) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <Navigation />
@@ -191,10 +235,7 @@ const RegisterForm = () => {
             <div className="w-20 h-20 mx-auto bg-gradient-to-r from-amber-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
               <AlertCircle className="w-10 h-10 text-white" />
             </div>
-            <div className="space-y-2">
-              
-              <p className="text-gray-600 leading-relaxed">{message}</p>
-            </div>
+            <p className="text-gray-600 leading-relaxed">{message}</p>
           </div>
         </div>
         <Footer />
@@ -208,8 +249,6 @@ const RegisterForm = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <Navigation />
-
-      {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-indigo-600/10" />
         <div className="relative max-w-4xl mx-auto px-6 pt-16 pb-12 text-center">
@@ -227,12 +266,10 @@ const RegisterForm = () => {
         </div>
       </div>
 
-      {/* Form Section */}
       <div className="max-w-6xl mx-auto px-6 pb-20">
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 overflow-hidden">
           <div className="p-8 md:p-12">
             <form onSubmit={handleSubmit} className="space-y-12">
-              {/* Form Fields Grid */}
               <div
                 className={clsx(
                   "grid",
@@ -241,179 +278,110 @@ const RegisterForm = () => {
                   "w-full"
                 )}
               >
-                {form.fields
-                  .sort((a, b) => {
-                    if (a.position?.row !== b.position?.row) {
-                      return a.position?.row - b.position?.row;
-                    }
-                    return (
-                      (a.position?.column || 0) - (b.position?.column || 0)
-                    );
-                  })
-                  .map((field) => {
-                    const commonProps = {
-                      id: field.name,
-                      name: field.name,
-                      required: field.required,
-                      value: formData[field.name],
-                      onChange: (e) => handleChange(e, field),
-                      placeholder: field.placeholder || field.label || "",
-                    };
+                {form.fields.map((field) => {
+                  const label = (
+                    <label
+                      htmlFor={field.name}
+                      className="block text-sm font-semibold mb-3 text-gray-800 tracking-wide"
+                    >
+                      {field.label}
+                      {field.required && (
+                        <span className="text-red-500 ml-1">*</span>
+                      )}
+                    </label>
+                  );
 
-                    const hasError = errors[field.name];
+                  const props = {
+                    id: field.name,
+                    name: field.name,
+                    required: field.required,
+                    value:
+                      field.fieldType !== "file"
+                        ? formData[field.name]
+                        : undefined,
+                    onChange: (e) => handleChange(e, field),
+                    placeholder: field.placeholder || field.label || "",
+                    className:
+                      "h-12 px-4 text-base rounded-xl border-2 transition-all duration-200 bg-white/50 backdrop-blur-sm border-gray-200 focus:ring-4 focus:ring-blue-100 placeholder:text-gray-400",
+                  };
 
-                    const label = (
-                      <label
-                        htmlFor={field.name}
-                        className="block text-sm font-semibold mb-3 text-gray-800 tracking-wide"
-                      >
-                        {field.label}
-                        {field.required && (
-                          <span className="text-red-500 ml-1">*</span>
-                        )}
-                      </label>
-                    );
-
-                    const errorMessage = hasError && (
-                      <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                        <AlertCircle className="w-4 h-4" />
-                        {hasError}
-                      </p>
-                    );
-
-                    const wrapper = (children) => (
-                      <div key={field._id} className="group">
-                        <div className="transform transition-transform duration-200 hover:scale-[1.02]">
-                          {label}
-                          <div className="relative">
-                            {children}
-                            {hasError && (
-                              <div className="absolute inset-0 pointer-events-none border-2 border-red-300 rounded-xl animate-pulse" />
-                            )}
-                          </div>
-                          {errorMessage}
-                        </div>
-                      </div>
-                    );
-
+                  const renderField = () => {
                     switch (field.fieldType) {
-                      case "text":
-                      case "email":
-                      case "number":
-                      case "date":
-                      case "time":
-                        return wrapper(
-                          <Input
-                            type={field.fieldType}
-                            {...commonProps}
-                            className={clsx(
-                              "h-12 px-4 text-base rounded-xl border-2 transition-all duration-200",
-                              "bg-white/50 backdrop-blur-sm",
-                              "border-gray-200",
-                              "focus:ring-4 focus:ring-blue-100",
-                              "placeholder:text-gray-400",
-                              hasError &&
-                                "border-red-300 focus:border-red-500 focus:ring-red-100"
-                            )}
-                          />
-                        );
-
                       case "textarea":
-                        return wrapper(
-                          <Textarea
-                            {...commonProps}
-                            rows={4}
-                            className={clsx(
-                              "p-4 text-base rounded-xl border-2 transition-all duration-200",
-                              "bg-white/50 backdrop-blur-sm resize-none",
-                              "border-gray-200 hover:border-blue-300 focus:border-blue-500",
-                              "focus:ring-4 focus:ring-blue-100",
-                              "placeholder:text-gray-400",
-                              hasError &&
-                                "border-red-300 focus:border-red-500 focus:ring-red-100"
-                            )}
-                          />
-                        );
-
+                        return <Textarea {...props} rows={4} />;
                       case "select":
-                        return wrapper(
-                          <select
-                            {...commonProps}
-                            className={clsx(
-                              "h-12 px-4 text-base rounded-xl border-2 transition-all duration-200",
-                              "bg-white/50 backdrop-blur-sm cursor-pointer",
-                              "border-gray-200 hover:border-blue-300 focus:border-blue-500",
-                              "focus:ring-4 focus:ring-blue-100 focus:outline-none",
-                              hasError &&
-                                "border-red-300 focus:border-red-500 focus:ring-red-100"
-                            )}
-                          >
+                        return (
+                          <select {...props}>
                             <option value="">Select an option</option>
-                            {field.options.map((opt, idx) => (
+                            {field.options?.map((opt, idx) => (
                               <option key={idx} value={opt}>
                                 {opt}
                               </option>
                             ))}
                           </select>
                         );
-
                       case "checkbox":
                         return (
-                          <div key={field._id} className="group">
-                            <div className="flex items-start space-x-4 p-4 rounded-xl bg-white/30 border-2 border-gray-200 hover:border-blue-300 transition-all duration-200 hover:bg-white/50">
-                              <div className="relative flex items-center justify-center mt-1">
-                                <input
-                                  type="checkbox"
-                                  id={field.name}
-                                  name={field.name}
-                                  checked={formData[field.name]}
-                                  onChange={(e) => handleChange(e, field)}
-                                  className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded-md focus:ring-blue-500 focus:ring-2 transition-all duration-200"
-                                />
-                              </div>
-                              <label
-                                htmlFor={field.name}
-                                className="text-base text-gray-800 cursor-pointer select-none leading-relaxed"
-                              >
-                                {field.label}
-                                {field.required && (
-                                  <span className="text-red-500 ml-1">*</span>
-                                )}
-                              </label>
-                            </div>
-                            {errors[field.name] && (
-                              <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                                <AlertCircle className="w-4 h-4" />
-                                {errors[field.name]}
-                              </p>
-                            )}
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={formData[field.name]}
+                              onChange={(e) => handleChange(e, field)}
+                            />
+                            <span>{field.label}</span>
                           </div>
                         );
-
+                      case "file":
+                        return (
+                          <input
+                            type="file"
+                            name={field.name}
+                            onChange={(e) => handleChange(e, field)}
+                            multiple={field.multiple}
+                            accept="image/*"
+                          />
+                        );
+                      case "password":
+                        return <Input type="password" {...props} />;
                       default:
-                        return null;
+                        return (
+                          <Input type={field.fieldType || "text"} {...props} />
+                        );
                     }
-                  })}
-              </div>
+                  };
 
-              {/* Submit Button */}
+                  return (
+                    <div key={field._id}>
+                      {label}
+                      {renderField()}
+                    </div>
+                  );
+                })}
+              </div>
               <div className="text-center pt-8">
                 <Button
                   type="submit"
                   variant={form.submitButton?.type || "default"}
                   className="rounded-xl px-6 py-3 text-white"
                   style={{
-                    backgroundColor: form.submitButton?.color || "#2563eb", // fallback to Tailwind's blue-600
+                    backgroundColor: form.submitButton?.color || "#2563eb",
                   }}
+                  disabled={submitting}
                 >
-                  {form.submitButton?.text || "Submit"}
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    form.submitButton?.text || "Submit"
+                  )}
                 </Button>
               </div>
             </form>
           </div>
         </div>
       </div>
-
       <Footer />
     </div>
   );

@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SidebarInset } from "@/components/ui/sidebar";
-import { Eye, Plus } from "lucide-react";
+import { Eye, Plus, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
@@ -29,7 +29,9 @@ export default function FormList() {
 
   const fetchForms = async () => {
     try {
-      const res = await axios.get("https://cricket-association-backend.onrender.com/api/forms"); // adjust base path if needed
+      const res = await axios.get(
+        "https://cricket-association-backend.onrender.com/api/forms"
+      );
       setForms(res.data);
     } catch (err) {
       console.error("Failed to fetch forms:", err);
@@ -38,9 +40,12 @@ export default function FormList() {
 
   const handleToggle = async (formId, currentStatus) => {
     try {
-      await axios.patch(`https://cricket-association-backend.onrender.com/api/form/${formId}/activate`, {
-        isActive: !currentStatus,
-      });
+      await axios.patch(
+        `https://cricket-association-backend.onrender.com/api/form/${formId}/activate`,
+        {
+          isActive: !currentStatus,
+        }
+      );
       fetchForms(); // Refresh state
     } catch (err) {
       console.error("Failed to toggle form:", err);
@@ -121,7 +126,7 @@ export default function FormList() {
                           <TableCell>
                             {new Date(form.createdAt).toLocaleDateString()}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="flex gap-2">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -132,6 +137,18 @@ export default function FormList() {
                               <Eye className="w-4 h-4 mr-2" />
                               View
                             </Button>
+                            {/* <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                navigate(
+                                  `/admin/form/${form.formId._id}?edit=true`
+                                )
+                              }
+                            >
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Edit
+                            </Button> */}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -139,23 +156,6 @@ export default function FormList() {
                   </Table>
                 </CardContent>
               </Card>
-
-              {selectedForm && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{selectedForm.name} - Preview</CardTitle>
-                    <CardDescription>
-                      {selectedForm.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Customize as needed */}
-                    <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto">
-                      {JSON.stringify(selectedForm, null, 2)}
-                    </pre>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           </div>
         </div>
