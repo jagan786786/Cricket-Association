@@ -12,6 +12,13 @@ import {
   Users,
   Calendar,
   MapPin,
+  Mail,
+  Phone,
+  FileText,
+  X,
+  Download,
+  User,
+  Star,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
@@ -23,7 +30,7 @@ const tabs = [
   { id: "add", label: "Add Tournaments" },
 ];
 
-const API_BASE = "https://cricket-association-backend.onrender.com/api";
+const API_BASE = "http://localhost:4000/api";
 
 const AdminTournaments = () => {
   const location = useLocation();
@@ -46,6 +53,8 @@ const AdminTournaments = () => {
   const [dateFilter, setDateFilter] = useState(""); // all, upcoming, past
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [submissionFormInfo, setSubmissionFormInfo] = useState(null);
+  const [submissionInstanceInfo, setSubmissionInstanceInfo] = useState(null);
 
   const [tournamentForm, setTournamentForm] = useState({
     name: "",
@@ -60,6 +69,13 @@ const AdminTournaments = () => {
     mapurl: "",
   });
   const [editTournamentId, setEditTournamentId] = useState(null);
+
+  // Form submissions states
+  const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
+  const [submissions, setSubmissions] = useState([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [selectedTournaments, setSelectedTournaments] = useState(null);
+  const [submissionsError, setSubmissionsError] = useState("");
 
   useEffect(() => {
     if (menuItemId) {
@@ -78,11 +94,150 @@ const AdminTournaments = () => {
     }
   };
 
+  const handleViewSubmissions = async (tournament) => {
+    setSelectedTournaments(tournament);
+    setShowSubmissionsModal(true);
+    setSubmissionsLoading(true);
+    setSubmissionsError("");
+    setSubmissions([]);
+
+    try {
+      // Use the correct service ID (_id not id)
+      const tournamentId = tournament._id;
+      console.log("Fetching submissions for tournament:", tournamentId);
+
+      if (!tournamentId) {
+        throw new Error("Tournament ID is missing");
+      }
+
+      // First, try to fetch the form associated with this service
+      const formRes = await fetch(`${API_BASE}/forms/instance/${tournamentId}`);
+
+      // Check if the response is OK and contains JSON
+      if (!formRes.ok) {
+        // If it's a 404, it might mean no form exists for this service
+        if (formRes.status === 404) {
+          throw new Error(
+            "No form found for this service. Please create a form for this service first."
+          );
+        }
+
+        // Try to get error message from response
+        const contentType = formRes.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await formRes.json();
+          throw new Error(
+            errorData.message || `Failed to fetch form data (${formRes.status})`
+          );
+        } else {
+          throw new Error(`Failed to fetch form data (${formRes.status})`);
+        }
+      }
+
+      const formData = await formRes.json();
+
+      if (!formData.formId) {
+        throw new Error("No form ID found for this service");
+      }
+
+      // Now fetch submissions using formId and instanceId (service._id)
+      const submissionsRes = await fetch(
+        `${API_BASE}/submission/forms/instance/${tournamentId}`
+      );
+
+      if (!submissionsRes.ok) {
+        if (submissionsRes.status === 404) {
+          // No submissions found is not really an error
+          setSubmissions([]);
+          return;
+        }
+
+        const contentType = submissionsRes.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await submissionsRes.json();
+          throw new Error(
+            errorData.message ||
+              `Failed to fetch submissions (${submissionsRes.status})`
+          );
+        } else {
+          throw new Error(
+            `Failed to fetch submissions (${submissionsRes.status})`
+          );
+        }
+      }
+
+      const submissionsData = await submissionsRes.json();
+      setSubmissions(submissionsData.submissions || []);
+    } catch (err) {
+      console.error("Error fetching submissions:", err);
+      setSubmissionsError(err.message || "Failed to fetch submissions");
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  };
+
+  // Function to format submission data for display
+  const formatSubmissionData = (data) => {
+    if (!data || typeof data !== "object") {
+      return [{ field: "Data", value: "No data available" }];
+    }
+
+    const formatted = [];
+    for (const [key, value] of Object.entries(data)) {
+      formatted.push({
+        field:
+          key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1"),
+        value:
+          typeof value === "object" && value !== null
+            ? JSON.stringify(value, null, 2)
+            : value?.toString() || "N/A",
+      });
+    }
+    return formatted;
+  };
+
+  // Function to export submissions as CSV
+  const exportSubmissions = () => {
+    if (submissions.length === 0) {
+      toast.warning("No submissions to export");
+      return;
+    }
+
+    try {
+      const headers = ["Submission ID", "Submitted Date", "Data"];
+      const csvContent = [
+        headers.join(","),
+        ...submissions.map((sub) =>
+          [
+            sub._id,
+            new Date(sub.submittedAt).toLocaleDateString(),
+            `"${JSON.stringify(sub.data).replace(/"/g, '""')}"`,
+          ].join(",")
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${selectedTournaments?.name || "service"}_submissions.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success("Submissions exported successfully!");
+    } catch (error) {
+      console.error("Error exporting submissions:", error);
+      toast.error("Failed to export submissions");
+    }
+  };
+
   const fetchTournaments = async () => {
     try {
       const res = await fetch(`${API_BASE}/tournaments/menuItem/${menuItemId}`);
       const data = await res.json();
       setTournaments(data.tournaments);
+      console.log("Fetched tournaments:", data.tournaments);
     } catch (err) {
       setError("Failed to load tournaments");
     }
@@ -91,7 +246,6 @@ const AdminTournaments = () => {
   // Enhanced filtering and pagination logic
   const getFilteredTournaments = () => {
     let filtered = tournaments.filter((tournament) => {
-      // Search filter
       const matchesSearch =
         tournament.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tournament.description
@@ -99,12 +253,10 @@ const AdminTournaments = () => {
           .includes(searchQuery.toLowerCase()) ||
         tournament.location?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Category filter
       const matchesCategory = selectedCategoryFilter
         ? tournament.category?._id === selectedCategoryFilter
         : true;
 
-      // Status filter
       const matchesStatus =
         statusFilter === ""
           ? true
@@ -112,7 +264,6 @@ const AdminTournaments = () => {
           ? tournament.active
           : !tournament.active;
 
-      // Date filter
       const matchesDate =
         dateFilter === ""
           ? true
@@ -123,7 +274,6 @@ const AdminTournaments = () => {
       return matchesSearch && matchesCategory && matchesStatus && matchesDate;
     });
 
-    // Sort filtered results
     filtered = filtered.sort((a, b) => {
       const nameA = a.category?.name?.toLowerCase() || "";
       const nameB = b.category?.name?.toLowerCase() || "";
@@ -134,6 +284,8 @@ const AdminTournaments = () => {
 
     return filtered;
   };
+
+  
 
   const getPaginatedTournaments = () => {
     const filtered = getFilteredTournaments();
@@ -146,7 +298,6 @@ const AdminTournaments = () => {
     return Math.ceil(getFilteredTournaments().length / itemsPerPage);
   };
 
-  // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -289,6 +440,8 @@ const AdminTournaments = () => {
       ...tournamentForm,
       menuItem: menuItemId,
     };
+
+    console.log(payload);
 
     try {
       const url = editTournamentId
@@ -875,6 +1028,13 @@ const AdminTournaments = () => {
                               <CheckCircle2 className="text-green-600 hover:text-green-800 w-4 h-4" />
                             )}
                           </button>
+                          <button
+                            onClick={() => handleViewSubmissions(tour)}
+                            title="View Submissions"
+                            className="text-gray-600 hover:text-green-600 transition-colors"
+                          >
+                            <Users className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -943,6 +1103,214 @@ const AdminTournaments = () => {
           </div>
         )}
       </div>
+  
+      {/* Form Submissions Modal */}
+      {showSubmissionsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-500 px-8 py-6 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/20 rounded-xl">
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-white">
+                    Form Submissions
+                  </h3>
+                  <p className="text-green-100">
+                    {selectedTournaments?.name} • {submissions.length} submissions
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={exportSubmissions}
+                  disabled={submissions.length === 0}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-xl hover:bg-white/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Export to CSV"
+                >
+                  <Download className="w-4 h-4" />
+                  Export
+                </button>
+                <button
+                  onClick={() => setShowSubmissionsModal(false)}
+                  className="p-2 text-white hover:bg-white/20 rounded-xl transition-all"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-8 max-h-[calc(90vh-120px)] overflow-y-auto">
+              {submissionsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                  <span className="ml-3 text-gray-600">
+                    Loading submissions...
+                  </span>
+                </div>
+              ) : submissionsError ? (
+                <div className="text-center py-12">
+                  <div className="text-red-400 mb-4">
+                    <X className="w-16 h-16 mx-auto" />
+                  </div>
+                  <h3 className="text-lg font-medium text-red-600 mb-2">
+                    Error Loading Submissions
+                  </h3>
+                  <p className="text-gray-500 mb-2">{submissionsError}</p>
+                  {submissionsError.includes("No form found") && (
+                    <p className="text-sm text-gray-400 mb-4">
+                      To view submissions, please create a form for this service
+                      first in your backend system.
+                    </p>
+                  )}
+                  <button
+                    onClick={() => handleViewSubmissions(selectedTournaments)}
+                    className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : submissions.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-gray-400 mb-4">
+                    <FileText className="w-16 h-16 mx-auto" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-600 mb-2">
+                    No Submissions Found
+                  </h3>
+                  <p className="text-gray-500">
+                    No form submissions have been received for this service yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Submissions Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                          <Users className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">
+                            Total Submissions
+                          </p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {submissions.length}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-green-100 rounded-lg">
+                          <Calendar className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">
+                            Latest Submission
+                          </p>
+                          <p className="text-lg font-semibold text-green-600">
+                            {submissions.length > 0
+                              ? new Date(
+                                  submissions[0].submittedAt
+                                ).toLocaleDateString()
+                              : "N/A"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-100 rounded-lg">
+                          <Star className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Service</p>
+                          <p className="text-lg font-semibold text-purple-600">
+                            {selectedTournaments?.name}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Submissions List */}
+                  <div className="space-y-4">
+                    {submissions.map((submission, index) => (
+                      <div
+                        key={submission._id}
+                        className="bg-gray-50 rounded-xl p-6 border border-gray-200 hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                              <User className="w-5 h-5 text-green-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-800">
+                                Submission #{index + 1}
+                              </h4>
+                              <p className="text-sm text-gray-500">
+                                Submitted on{" "}
+                                {new Date(
+                                  submission.submittedAt
+                                ).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                            ID: {submission._id.slice(-6)}
+                          </span>
+                        </div>
+
+                        {/* Submission Data */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {formatSubmissionData(submission.data).map(
+                            (item, idx) => (
+                              <div
+                                key={idx}
+                                className="bg-white p-4 rounded-lg border"
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                                    {item.field
+                                      .toLowerCase()
+                                      .includes("email") ? (
+                                      <Mail className="w-4 h-4 text-gray-600" />
+                                    ) : item.field
+                                        .toLowerCase()
+                                        .includes("phone") ? (
+                                      <Phone className="w-4 h-4 text-gray-600" />
+                                    ) : (
+                                      <FileText className="w-4 h-4 text-gray-600" />
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      {item.field}
+                                    </p>
+                                    <p className="mt-1 text-sm text-gray-900 break-words">
+                                      {item.value}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

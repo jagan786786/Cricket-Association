@@ -26,7 +26,8 @@ const columnClassMap = {
 };
 
 const RegisterForm = () => {
-  const { menuItemName, instanceId } = useParams();
+  const { menuItemId, instanceId } = useParams(); // instead of menuItemName, instanceId
+
   const [form, setForm] = useState(null);
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(true);
@@ -39,21 +40,18 @@ const RegisterForm = () => {
     const loadForm = async () => {
       try {
         const { data } = await axios.get(`${API_BASE}/forms`);
+
+        // Filter by menuItemId and instanceId
         const forms = data.filter(
           (f) =>
-            f.menuItemName === menuItemName &&
-            f.instanceName &&
+            f.menuItemId?._id === menuItemId && // check ObjectId string match
+            f.instanceId === instanceId && // instanceId is generic ObjectId
             f.formId &&
             f.isActive
         );
 
         const instanceForm = forms.find(
-          (f) =>
-            f.formId &&
-            f.formId._id &&
-            f.instanceName &&
-            f.formId.fields.length > 0 &&
-            f.formId._id
+          (f) => f.formId && f.formId._id && f.formId.fields.length > 0
         );
 
         if (!instanceForm) {
@@ -65,6 +63,7 @@ const RegisterForm = () => {
         const { data: fullForm } = await axios.get(
           `${API_BASE}/form/${instanceForm.formId._id}`
         );
+
         setForm(fullForm);
 
         const initialData = {};
@@ -87,7 +86,7 @@ const RegisterForm = () => {
     };
 
     loadForm();
-  }, [menuItemName, instanceId]);
+  }, [menuItemId, instanceId]);
 
   const validateField = (field, value) => {
     if (
@@ -203,7 +202,7 @@ const RegisterForm = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <Navigation />
-        
+
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center space-y-4">
             <div className="relative">
